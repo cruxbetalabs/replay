@@ -155,12 +155,9 @@ export function useVideoFps({
         return null;
     }, [fpsByIndex]);
 
-    const isCalculating = useMemo(() => calculatingByIndex.some(Boolean), [calculatingByIndex]);
-
     return {
         fps,
         fpsByIndex,
-        isCalculating,
         calculatingByIndex,
     };
 }

@@ -29,8 +29,9 @@ interface VideoControlPanelProps {
     onUpdateKeyMomentFromVideo1: (keyMomentId: string) => void;
     onUpdateKeyMomentFromVideo2: (keyMomentId: string) => void;
     onDeleteKeyMoment: (keyMomentId: string) => void;
-    onRemoveVideo1: () => void;
-    onRemoveVideo2: () => void;
+    showRemoveVideos?: boolean;
+    onRemoveVideo1?: () => void;
+    onRemoveVideo2?: () => void;
 }
 
 export function VideoControlPanel({
@@ -59,6 +60,7 @@ export function VideoControlPanel({
     onUpdateKeyMomentFromVideo1,
     onUpdateKeyMomentFromVideo2,
     onDeleteKeyMoment,
+    showRemoveVideos = true,
     onRemoveVideo1,
     onRemoveVideo2,
 }: VideoControlPanelProps) {
@@ -83,18 +85,20 @@ export function VideoControlPanel({
                         {formatVideoTime(maxDuration)}
                     </span>
                 </div>
-                <div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (hasVideo1) onRemoveVideo1();
-                            if (hasVideo2) onRemoveVideo2();
-                        }}
-                        className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm"
-                    >
-                        Remove Videos
-                    </button>
-                </div>
+                {showRemoveVideos && (onRemoveVideo1 || onRemoveVideo2) && (
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (hasVideo1) onRemoveVideo1?.();
+                                if (hasVideo2) onRemoveVideo2?.();
+                            }}
+                            className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm"
+                        >
+                            Remove Videos
+                        </button>
+                    </div>
+                )}
                 {hasVideo1 && (
                     <VideoPlaybackSection
                         label="Video 1"

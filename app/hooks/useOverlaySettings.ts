@@ -35,6 +35,10 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         setHiddenTrajectoryTrackNames([]);
     }, []);
 
+    const hideAllTrajectoryTracks = useCallback(() => {
+        setHiddenTrajectoryTrackNames(availableTrajectoryTrackNames);
+    }, [availableTrajectoryTrackNames]);
+
     const togglePose = useCallback(() => {
         setShowPose((prev) => !prev);
     }, []);
@@ -48,6 +52,7 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         setTrajectoryHistorySeconds,
         toggleTrajectoryTrack,
         showAllTrajectoryTracks,
+        hideAllTrajectoryTracks,
         togglePose,
     };
 }

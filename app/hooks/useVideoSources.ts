@@ -3,17 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VideoIndex, VideoSourceIdentity } from '../lib/key-moments';
 
-interface UseVideoSourcesOptions {
-    onVideoChange?: (videoIndex: VideoIndex) => void;
-}
-
 const revokeObjectUrl = (url: string | null) => {
     if (url?.startsWith('blob:')) {
         URL.revokeObjectURL(url);
     }
 };
 
-export function useVideoSources({ onVideoChange }: UseVideoSourcesOptions = {}) {
+export function useVideoSources() {
     const [videoUrls, setVideoUrls] = useState<[string | null, string | null]>([null, null]);
     const [videoSources, setVideoSources] = useState<[VideoSourceIdentity | null, VideoSourceIdentity | null]>([null, null]);
     const videoRef1 = useRef<HTMLVideoElement>(null);
@@ -40,9 +36,7 @@ export function useVideoSources({ onVideoChange }: UseVideoSourcesOptions = {}) 
             nextVideoUrls[videoIndex] = nextUrl;
             return nextVideoUrls;
         });
-
-        onVideoChange?.(videoIndex);
-    }, [onVideoChange]);
+    }, []);
 
     const replaceVideoSource = useCallback((videoIndex: VideoIndex, file: File, nextUrl?: string) => {
         setVideoSources((prev) => {
@@ -72,18 +66,7 @@ export function useVideoSources({ onVideoChange }: UseVideoSourcesOptions = {}) 
             nextVideoSources[videoIndex] = null;
             return nextVideoSources;
         });
-
-        onVideoChange?.(videoIndex);
-    }, [onVideoChange]);
-
-    const handleFileUpload = useCallback((videoIndex: VideoIndex, event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (file && file.type.startsWith('video/')) {
-            replaceVideoSource(videoIndex, file);
-        }
-    }, [replaceVideoSource]);
+    }, []);
 
     return {
         videoUrl1: videoUrls[0],
@@ -93,9 +76,7 @@ export function useVideoSources({ onVideoChange }: UseVideoSourcesOptions = {}) 
         videoRef1,
         videoRef2,
         videoRefs,
-        replaceVideoUrl,
         replaceVideoSource,
         removeVideo,
-        handleFileUpload,
     };
 }

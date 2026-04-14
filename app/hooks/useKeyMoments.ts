@@ -19,6 +19,7 @@ interface UseKeyMomentsOptions {
     videoRefs: [RefObject<HTMLVideoElement | null>, RefObject<HTMLVideoElement | null>];
     seekToByIndex: [(time: number) => void, (time: number) => void];
     persistenceKey?: string | null;
+    onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
 }
 
 const isKeyMomentPosition = (value: unknown): value is NonNullable<KeyMoment['positions'][number]> => {
@@ -78,6 +79,7 @@ export function useKeyMoments({
     videoRefs,
     seekToByIndex,
     persistenceKey = null,
+    onKeyMomentsChange,
 }: UseKeyMomentsOptions) {
     const [activePlaybackSliderIndex, setActivePlaybackSliderIndex] = useState<VideoIndex | null>(null);
     const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
@@ -176,32 +178,6 @@ export function useKeyMoments({
         }
     }, [durationByIndex, fpsByIndex, hasVideoByIndex, pauseVideos, seekToByIndex]);
 
-    const clearVideoKeyMoments = useCallback((videoIndex: VideoIndex) => {
-        setKeyMoments((prev) => {
-            const nextKeyMoments = prev
-                .map((keyMoment) => {
-                    const nextPositions: KeyMoment['positions'] = [...keyMoment.positions];
-                    nextPositions[videoIndex] = null;
-
-                    return {
-                        ...keyMoment,
-                        positions: nextPositions,
-                    };
-                })
-                .filter((keyMoment) => keyMoment.positions.some(Boolean));
-
-            setSelectedKeyMomentId((currentSelectedId) => {
-                if (!currentSelectedId) {
-                    return currentSelectedId;
-                }
-
-                return nextKeyMoments.some((keyMoment) => keyMoment.id === currentSelectedId) ? currentSelectedId : null;
-            });
-
-            return nextKeyMoments;
-        });
-    }, []);
-
     useEffect(() => {
         if (!persistenceKey || typeof window === 'undefined') {
             return;
@@ -231,6 +207,10 @@ export function useKeyMoments({
 
         window.localStorage.setItem(persistenceKey, JSON.stringify(nextPersistedState));
     }, [keyMoments, persistenceKey, selectedKeyMomentId]);
+
+    useEffect(() => {
+        onKeyMomentsChange?.(keyMoments);
+    }, [keyMoments, onKeyMomentsChange]);
 
     useEffect(() => {
         if (activePlaybackSliderIndex === 0 && !hasVideoByIndex[0]) {
@@ -295,7 +275,6 @@ export function useKeyMoments({
         jumpToKeyMoment,
         deleteKeyMoment,
         setKeyMomentTime,
-        clearVideoKeyMoments,
         keyMomentShortcuts,
         addKeyShortcut,
     };

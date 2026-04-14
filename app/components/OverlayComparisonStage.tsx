@@ -47,16 +47,8 @@ export function OverlayComparisonStage({
     const hasRenderableOverlay = (metadata1 && canRender1) || (metadata2 && canRender2);
 
     return (
-        <div className="relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.16),_transparent_40%),linear-gradient(180deg,_#020617_0%,_#111827_100%)] shadow-[0_28px_60px_rgba(15,23,42,0.18)] dark:border-slate-800">
-            <div className="absolute inset-x-0 top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-md">
-                <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200/80">
-                        Overlay View
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                        Compare both pose renders on a shared stage.
-                    </p>
-                </div>
+        <div className="relative h-full overflow-hidden rounded-lg border-4 border-gray-300 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.16),_transparent_40%),linear-gradient(180deg,_#020617_0%,_#111827_100%)] dark:border-gray-700">
+            <div className="absolute inset-x-0 top-0 z-20 flex flex-wrap items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-md">
                 <div className="flex flex-wrap items-center gap-2">
                     {SOURCE_LEGEND.map((source) => (
                         <div

@@ -1,8 +1,54 @@
 'use client';
 
+import { useMemo } from 'react';
+import { Switch } from '@/components/ui/switch';
+
+const BODY_TRACK_LAYOUT = [
+    {
+        trackName: 'head',
+        label: 'Head',
+        className: 'left-1/2 top-3 -translate-x-1/2',
+    },
+    {
+        trackName: 'left_hand',
+        label: 'Left Hand',
+        className: 'left-[14%] top-[22%]',
+    },
+    {
+        trackName: 'right_hand',
+        label: 'Right Hand',
+        className: 'right-[14%] top-[22%]',
+    },
+    {
+        trackName: 'upper_body_center',
+        label: 'Upper Body',
+        className: 'left-1/2 top-[34%] -translate-x-1/2',
+    },
+    {
+        trackName: 'hip_mid',
+        label: 'Hip',
+        className: 'left-1/2 top-[56%] -translate-x-1/2',
+    },
+    {
+        trackName: 'left_foot',
+        label: 'Left Foot',
+        className: 'left-[28%] bottom-3 -translate-x-1/2',
+    },
+    {
+        trackName: 'right_foot',
+        label: 'Right Foot',
+        className: 'left-[72%] bottom-3 -translate-x-1/2',
+    },
+] as const;
+
+const BODY_TRACK_NAMES: ReadonlySet<string> = new Set(BODY_TRACK_LAYOUT.map((track) => track.trackName));
+
+const formatTrackLabel = (trackName: string) => trackName
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+
 interface OverlaySettingsPanelProps {
-    direction: 'left' | 'right' | 'none';
-    speed: number;
     trajectoryHistorySeconds: number;
     trajectoryHistoryWindowSec: number | null;
     hasPoseMetadata: boolean;
@@ -13,12 +59,11 @@ interface OverlaySettingsPanelProps {
     onSetTrajectoryHistorySeconds: (value: number) => void;
     onTogglePose: () => void;
     onShowAllTracks: () => void;
+    onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
 }
 
 export function OverlaySettingsPanel({
-    direction,
-    speed,
     trajectoryHistorySeconds,
     trajectoryHistoryWindowSec,
     hasPoseMetadata,
@@ -29,54 +74,30 @@ export function OverlaySettingsPanel({
     onSetTrajectoryHistorySeconds,
     onTogglePose,
     onShowAllTracks,
+    onHideAllTracks,
     onToggleTrajectoryTrack,
 }: OverlaySettingsPanelProps) {
+    const visibleTrackNameSet = useMemo(() => new Set(visibleTrajectoryTrackNames), [visibleTrajectoryTrackNames]);
+    const availableTrackNameSet = useMemo(() => new Set(availableTrajectoryTrackNames), [availableTrajectoryTrackNames]);
+    const extraTrackNames = useMemo(
+        () => availableTrajectoryTrackNames.filter((trackName) => !BODY_TRACK_NAMES.has(trackName)),
+        [availableTrajectoryTrackNames],
+    );
+    const allTracksVisible = availableTrajectoryTrackNames.length > 0 && hiddenTrajectoryTrackNames.length === 0;
+
     return (
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg flex-1">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">
-                Swipe Stats
+        <div className="flex-1 rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900">
+            <h2 className="mb-4 text-xl font-bold text-gray-800 dark:text-gray-200">
+                Overlay Settings
             </h2>
 
             <div className="space-y-4">
                 <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                            Direction
-                        </span>
-                        <span className={`px-3 py-1 rounded-full font-medium text-sm ${direction === 'left'
-                            ? 'bg-purple-500 text-white'
-                            : direction === 'right'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-400 text-white'
-                            }`}>
-                            {direction === 'left' ? '← Left' : direction === 'right' ? 'Right →' : 'None'}
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                            Speed
-                        </span>
-                        <span className="text-gray-800 dark:text-gray-200 font-mono text-sm">
-                            {speed.toFixed(1)} px/event
-                        </span>
-                    </div>
-                    <div className="w-full bg-gray-300 dark:bg-gray-700 h-3 rounded-full overflow-hidden">
-                        <div
-                            className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-100"
-                            style={{ width: `${Math.min(speed * 2, 100)}%` }}
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             Trajectory History
                         </span>
-                        <span className="text-gray-800 dark:text-gray-200 font-mono text-sm">
+                        <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
                             {trajectoryHistoryWindowSec == null ? 'Full trail' : `${trajectoryHistorySeconds.toFixed(1)}s`}
                         </span>
                     </div>
@@ -87,7 +108,7 @@ export function OverlaySettingsPanel({
                         step={0.1}
                         value={trajectoryHistorySeconds}
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
-                        className="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-600 hover:accent-cyan-700"
+                        className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-cyan-600 hover:accent-cyan-700 dark:bg-gray-700"
                     />
                     <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
                         <span>0.0s keeps the full history visible</span>
@@ -96,87 +117,112 @@ export function OverlaySettingsPanel({
                 </div>
 
                 <div>
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
                         <div>
-                            <p className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                                 Pose Overlay
                             </p>
-                            <p className="mt-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                Draw skeleton lines and landmark dots from the pose block.
+                            <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                {hasPoseMetadata ? 'Show pose landmarks' : 'Unavailable'}
                             </p>
                         </div>
+                        <Switch
+                            checked={hasPoseMetadata && showPose}
+                            onCheckedChange={(checked) => {
+                                if (hasPoseMetadata && checked !== showPose) {
+                                    onTogglePose();
+                                }
+                            }}
+                            disabled={!hasPoseMetadata}
+                            aria-label="Toggle pose overlay"
+                        />
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (hasPoseMetadata) {
-                                onTogglePose();
-                            }
-                        }}
-                        aria-pressed={hasPoseMetadata ? showPose : false}
-                        className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${hasPoseMetadata
-                            ? showPose
-                                ? 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-100'
-                                : 'border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                            : 'cursor-not-allowed border-dashed border-gray-300 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-500'
-                            }`}
-                    >
-                        <span className="block text-xs font-semibold uppercase tracking-[0.18em]">
-                            {hasPoseMetadata ? (showPose ? 'Visible' : 'Hidden') : 'Unavailable'}
-                        </span>
-                        <span className="mt-1 block text-sm font-semibold leading-tight">
-                            {hasPoseMetadata ? 'Pose landmarks and skeleton' : 'Upload metadata with a pose block to enable this'}
-                        </span>
-                    </button>
                 </div>
 
                 <div>
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
-                            <p className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                                Visible Trajectories
-                            </p>
-                            <p className="mt-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                Default is all tracks. Toggle any row item to hide or show it.
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Visible Trajectories:
                             </p>
                         </div>
-                        {availableTrajectoryTrackNames.length > 0 && hiddenTrajectoryTrackNames.length > 0 && (
+                        {availableTrajectoryTrackNames.length > 0 && (
                             <button
                                 type="button"
-                                onClick={onShowAllTracks}
+                                onClick={allTracksVisible ? onHideAllTracks : onShowAllTracks}
                                 className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100 dark:border-cyan-900 dark:bg-cyan-950/50 dark:text-cyan-300"
                             >
-                                Show All
+                                {allTracksVisible ? 'Hide All' : 'Show All'}
                             </button>
                         )}
                     </div>
 
                     {availableTrajectoryTrackNames.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                            {availableTrajectoryTrackNames.map((trackName) => {
-                                const isVisible = visibleTrajectoryTrackNames.includes(trackName);
+                        <fieldset className="space-y-4">
+                            <div className="relative h-[22rem] w-full overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-b from-cyan-50 to-white px-4 py-5 dark:border-cyan-950/60 dark:from-cyan-950/20 dark:to-gray-900">
+                                <div className="pointer-events-none absolute left-1/2 top-[16%] h-[44%] w-px -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
+                                <div className="pointer-events-none absolute left-1/2 top-[26%] h-px w-[46%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
+                                <div className="pointer-events-none absolute left-1/2 top-[60%] h-px w-[22%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
+                                <div className="pointer-events-none absolute left-[40%] top-[60%] h-[24%] w-px bg-cyan-200 dark:bg-cyan-900" />
+                                <div className="pointer-events-none absolute left-[60%] top-[60%] h-[24%] w-px bg-cyan-200 dark:bg-cyan-900" />
 
-                                return (
-                                    <button
-                                        key={trackName}
-                                        type="button"
-                                        aria-pressed={isVisible}
-                                        onClick={() => onToggleTrajectoryTrack(trackName)}
-                                        className={`min-w-[7rem] rounded-xl border px-4 py-3 text-left transition-colors ${isVisible
-                                            ? 'border-cyan-500 bg-cyan-50 text-cyan-900 dark:border-cyan-400 dark:bg-cyan-950/40 dark:text-cyan-100'
-                                            : 'border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                                            }`}
-                                    >
-                                        <span className="block text-xs font-semibold uppercase tracking-[0.18em]">
-                                            {isVisible ? 'Visible' : 'Hidden'}
-                                        </span>
-                                        <span className="mt-1 block text-sm font-semibold leading-tight">
-                                            {trackName}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                {BODY_TRACK_LAYOUT.map((track) => {
+                                    const isAvailable = availableTrackNameSet.has(track.trackName);
+                                    const isVisible = visibleTrackNameSet.has(track.trackName);
+
+                                    return (
+                                        <button
+                                            key={track.trackName}
+                                            type="button"
+                                            aria-pressed={isAvailable ? isVisible : false}
+                                            onClick={() => {
+                                                if (isAvailable) {
+                                                    onToggleTrajectoryTrack(track.trackName);
+                                                }
+                                            }}
+                                            disabled={!isAvailable}
+                                            className={`absolute min-w-[6.5rem] rounded-full border px-3 py-2 text-center text-xs font-semibold shadow-sm transition-all ${track.className} ${isAvailable
+                                                ? isVisible
+                                                    ? 'border-cyan-500 bg-cyan-500 text-white shadow-cyan-200 dark:border-cyan-400 dark:bg-cyan-400 dark:text-cyan-950 dark:shadow-transparent'
+                                                    : 'border-gray-200 bg-white text-gray-500 hover:border-cyan-300 hover:text-cyan-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-cyan-700 dark:hover:text-cyan-300'
+                                                : 'cursor-not-allowed border-dashed border-gray-200 bg-gray-100 text-gray-400 shadow-none dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-500'
+                                                }`}
+                                        >
+                                            <span className="block leading-tight">{track.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {extraTrackNames.length > 0 && (
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+                                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                        Extra Tracks
+                                    </p>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {extraTrackNames.map((trackName) => {
+                                            const isVisible = visibleTrackNameSet.has(trackName);
+
+                                            return (
+                                                <label
+                                                    key={trackName}
+                                                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+                                                >
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        {formatTrackLabel(trackName)}
+                                                    </span>
+                                                    <Switch
+                                                        checked={isVisible}
+                                                        onCheckedChange={() => onToggleTrajectoryTrack(trackName)}
+                                                        aria-label={`Toggle ${formatTrackLabel(trackName)}`}
+                                                    />
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </fieldset>
                     ) : (
                         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
                             Upload metadata JSON to populate track toggles.
