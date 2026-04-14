@@ -1,21 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-
-interface KeyMomentPosition {
-    time: number;
-    frame: number;
-}
-
-interface KeyMoment {
-    id: string;
-    positions: [KeyMomentPosition | null, KeyMomentPosition | null];
-}
+import type { KeyMoment, KeyMomentPosition, VideoIndex } from '../lib/key-moments';
 
 interface KeyMomentTimelineProps {
     duration: number;
     keyMoments: KeyMoment[];
-    videoIndex: 0 | 1;
+    videoIndex: VideoIndex;
     selectedKeyMomentId: string | null;
     accentClassName: string;
     onSelectKeyMoment: (keyMomentId: string) => void;

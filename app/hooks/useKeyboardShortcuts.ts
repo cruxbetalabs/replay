@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-interface KeyboardShortcut {
+export interface KeyboardShortcut {
     key: string;
     onTrigger: () => void;
     enabled?: boolean;

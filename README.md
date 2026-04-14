@@ -27,10 +27,12 @@ Main behavior:
 
 Relevant files:
 
-- `app/page.tsx` for the main orchestration.
-- `app/components/VideoDropzone.tsx` for local file loading.
-- `app/components/VideoControlPanel.tsx` for sliders and key moments.
-- `app/hooks/useKeyboardShortcuts.ts` for reusable shortcut bindings.
+- `app/page.tsx` for page composition and layout.
+- `app/hooks/useVideoSources.ts` for local video URL lifecycle.
+- `app/hooks/useKeyMoments.ts` for key-moment state and actions.
+- `app/hooks/useTrajectoryState.ts` for metadata upload and compatibility.
+- `app/lib/trajectory-parser.ts` and `app/lib/trajectory-compatibility.ts` for focused trajectory utilities.
+- `app/components/VideoDropzone.tsx` and `app/components/OverlayComparisonStage.tsx` for the main comparison surfaces.
 
 Build with:
 

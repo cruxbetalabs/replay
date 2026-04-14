@@ -22,7 +22,6 @@ export function useVideoControl({
     const [currentTime2, setCurrentTime2] = useState<number>(0);
     const [duration1, setDuration1] = useState<number>(0);
     const [duration2, setDuration2] = useState<number>(0);
-    const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
     const seekTo1 = useCallback((newTime: number) => {
         const video = videoRefs[0]?.current ?? null;
@@ -37,22 +36,6 @@ export function useVideoControl({
         if (video2) {
             video2.currentTime = newTime;
             setCurrentTime2(newTime);
-        }
-    }, [videoRefs]);
-
-    const togglePlayPause = useCallback(() => {
-        const video = videoRefs[0]?.current ?? null;
-        const video2 = videoRefs[1]?.current ?? null;
-        const shouldPlay = video?.paused || video2?.paused;
-
-        if (shouldPlay) {
-            video?.play();
-            video2?.play();
-            setIsPlaying(true);
-        } else {
-            video?.pause();
-            video2?.pause();
-            setIsPlaying(false);
         }
     }, [videoRefs]);
 
@@ -128,9 +111,7 @@ export function useVideoControl({
         duration1,
         duration2,
         fps,
-        isPlaying,
         seekTo1,
         seekTo2,
-        togglePlayPause,
     };
 }

@@ -1,51 +1,50 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { OverlaySettingsPanel } from './components/OverlaySettingsPanel';
 import { MouseControlPanel } from './components/MouseControlPanel';
+import { OverlayComparisonStage } from './components/OverlayComparisonStage';
 import { VideoControlPanel } from './components/VideoControlPanel';
 import { VideoDropzone } from './components/VideoDropzone';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useComparisonShortcuts } from './hooks/useComparisonShortcuts';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useKeyMoments } from './hooks/useKeyMoments';
 import { useMouseControl } from './hooks/useMouseControl';
+import { useOverlaySettings } from './hooks/useOverlaySettings';
+import { useTrajectoryState } from './hooks/useTrajectoryState';
 import { useVideoControl } from './hooks/useVideoControl';
 import { useVideoFps } from './hooks/useVideoFps';
-
-interface KeyMomentPosition {
-  time: number;
-  frame: number;
-}
-
-interface KeyMoment {
-  id: string;
-  positions: [KeyMomentPosition | null, KeyMomentPosition | null];
-}
-
-const DEFAULT_FPS = 30;
-
-const getFrameAtTime = (time: number, fps: number | null) => Math.max(0, Math.round(time * (fps ?? DEFAULT_FPS)));
-
-const buildKeyMomentPosition = (time: number, fps: number | null): KeyMomentPosition => ({
-  time,
-  frame: getFrameAtTime(time, fps),
-});
-
-const revokeObjectUrl = (url: string | null) => {
-  if (url?.startsWith('blob:')) {
-    URL.revokeObjectURL(url);
-  }
-};
+import { useVideoSources } from './hooks/useVideoSources';
+import { getKeyMomentStorageKey } from './lib/key-moments';
 
 export default function Home() {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoUrl2, setVideoUrl2] = useState<string | null>(null);
-  const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
-  const [selectedKeyMomentId, setSelectedKeyMomentId] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const videoRef2 = useRef<HTMLVideoElement>(null);
-  const videoUrlRef = useRef<string | null>(null);
-  const videoUrl2Ref = useRef<string | null>(null);
-
-  const videoRefs = useMemo(() => [videoRef, videoRef2], []);
-  const videoUrls = useMemo(() => [videoUrl, videoUrl2], [videoUrl, videoUrl2]);
+  const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
+  const {
+    videoUrl1: videoUrl,
+    videoUrl2,
+    videoRef1: videoRef,
+    videoRef2,
+    videoRefs,
+    videoUrls,
+    replaceVideoSource,
+    removeVideo,
+    videoSources,
+  } = useVideoSources();
+  const hasVideoByIndex: [boolean, boolean] = [Boolean(videoUrl), Boolean(videoUrl2)];
+  const {
+    trajectoryByIndex,
+    overlayMetadataByIndex,
+    trajectoryWarningsByIndex,
+    canRenderOverlayByIndex,
+    availableTrajectoryTrackNames,
+    hasAnyOverlayData,
+    hasPoseMetadata,
+    handleTrajectoryUpload,
+    clearTrajectory,
+    updateVideoDimensions,
+    clearVideoDimensions,
+  } = useTrajectoryState({ hasVideoByIndex });
 
   const { boxRef, direction, speed, movement, controlMode } = useMouseControl({ controlMode: 'both' });
   const { fps, fpsByIndex, calculatingByIndex } = useVideoFps({
@@ -65,218 +64,177 @@ export default function Home() {
     movement,
     fps,
   });
+  const keyMomentStorageKey = useMemo(() => getKeyMomentStorageKey(videoSources), [videoSources]);
+  const {
+    keyMoments,
+    selectedKeyMomentId,
+    setActivePlaybackSliderIndex,
+    createKeyMomentFromVideo,
+    updateKeyMomentFromVideo,
+    jumpToKeyMoment,
+    deleteKeyMoment,
+    setKeyMomentTime,
+    keyMomentShortcuts,
+    addKeyShortcut,
+  } = useKeyMoments({
+    currentTimeByIndex: [currentTime1, currentTime2],
+    durationByIndex: [duration1, duration2],
+    fpsByIndex: [fps1, fps2],
+    hasVideoByIndex,
+    videoRefs,
+    seekToByIndex: [seekTo1, seekTo2],
+    persistenceKey: keyMomentStorageKey,
+  });
+  const {
+    showPose,
+    trajectoryHistorySeconds,
+    trajectoryHistoryWindowSec,
+    hiddenTrajectoryTrackNames,
+    visibleTrajectoryTrackNames,
+    setTrajectoryHistorySeconds,
+    toggleTrajectoryTrack,
+    showAllTrajectoryTracks,
+    togglePose,
+  } = useOverlaySettings({ availableTrajectoryTrackNames });
+  const resolvedViewMode = viewMode === 'overlay' && !hasAnyOverlayData ? 'split' : viewMode;
 
-  const createKeyMomentFromVideo = (sourceIndex: 0 | 1) => {
-    const sourceTime = sourceIndex === 0 ? currentTime1 : currentTime2;
-    const nextKeyMomentId = crypto.randomUUID();
+  const handleSetViewMode = useCallback((nextViewMode: 'split' | 'overlay') => {
+    setViewMode(nextViewMode === 'overlay' && !hasAnyOverlayData ? 'split' : nextViewMode);
+  }, [hasAnyOverlayData]);
 
-    setSelectedKeyMomentId(nextKeyMomentId);
-
-    setKeyMoments((prev) => [
-      ...prev,
-      {
-        id: nextKeyMomentId,
-        positions: [
-          videoUrl ? buildKeyMomentPosition(sourceTime, fps1) : null,
-          videoUrl2 ? buildKeyMomentPosition(sourceTime, fps2) : null,
-        ],
-      },
-    ]);
-  };
-
-  const updateKeyMomentFromVideo = (keyMomentId: string, sourceIndex: 0 | 1) => {
-    const sourceTime = sourceIndex === 0 ? currentTime1 : currentTime2;
-    const sourceFps = sourceIndex === 0 ? fps1 : fps2;
-
-    setKeyMoments((prev) => prev.map((keyMoment) => {
-      if (keyMoment.id !== keyMomentId) {
-        return keyMoment;
-      }
-
-      const nextPositions: [KeyMomentPosition | null, KeyMomentPosition | null] = [...keyMoment.positions];
-      nextPositions[sourceIndex] = buildKeyMomentPosition(sourceTime, sourceFps);
-
-      return {
-        ...keyMoment,
-        positions: nextPositions,
-      };
-    }));
-  };
-
-  const jumpToKeyMoment = useCallback((keyMomentId: string) => {
-    const keyMoment = keyMoments.find((entry) => entry.id === keyMomentId);
-    if (!keyMoment) {
-      return;
-    }
-
-    setSelectedKeyMomentId(keyMomentId);
-
-    videoRef.current?.pause();
-    videoRef2.current?.pause();
-
-    const position1 = keyMoment.positions[0];
-    const position2 = keyMoment.positions[1];
-
-    if (position1 && videoUrl) {
-      seekTo1(position1.time);
-    }
-
-    if (position2 && videoUrl2) {
-      seekTo2(position2.time);
-    }
-  }, [keyMoments, seekTo1, seekTo2, videoUrl, videoUrl2]);
-
-  const keyMomentShortcuts = useMemo(() => keyMoments.slice(0, 9).map((keyMoment, index) => ({
-    key: String(index + 1),
-    onTrigger: () => jumpToKeyMoment(keyMoment.id),
-  })), [jumpToKeyMoment, keyMoments]);
-
-  useKeyboardShortcuts({
-    shortcuts: keyMomentShortcuts,
-    enabled: keyMoments.length > 0,
+  const { shortcuts, enabled: areShortcutsEnabled } = useComparisonShortcuts({
+    addKeyShortcut,
+    keyMomentShortcuts,
+    availableTrajectoryTrackNames,
+    hasAnyOverlayData,
+    hasPoseMetadata,
+    resolvedViewMode,
+    onSetViewMode: handleSetViewMode,
+    onTogglePose: togglePose,
+    onToggleTrajectoryTrack: toggleTrajectoryTrack,
   });
 
-  const deleteKeyMoment = (keyMomentId: string) => {
-    setKeyMoments((prev) => prev.filter((keyMoment) => keyMoment.id !== keyMomentId));
-    setSelectedKeyMomentId((prev) => (prev === keyMomentId ? null : prev));
-  };
-
-  const setKeyMomentTime = (keyMomentId: string, videoIndex: 0 | 1, nextTime: number) => {
-    const videoDuration = videoIndex === 0 ? duration1 : duration2;
-    const boundedTime = Math.max(0, Math.min(nextTime, videoDuration || nextTime));
-    const sourceFps = videoIndex === 0 ? fps1 : fps2;
-
-    setSelectedKeyMomentId(keyMomentId);
-    setKeyMoments((prev) => prev.map((keyMoment) => {
-      if (keyMoment.id !== keyMomentId) {
-        return keyMoment;
-      }
-
-      const nextPositions: [KeyMomentPosition | null, KeyMomentPosition | null] = [...keyMoment.positions];
-      nextPositions[videoIndex] = buildKeyMomentPosition(boundedTime, sourceFps);
-
-      return {
-        ...keyMoment,
-        positions: nextPositions,
-      };
-    }));
-
-    videoRef.current?.pause();
-    videoRef2.current?.pause();
-
-    if (videoIndex === 0 && videoUrl) {
-      seekTo1(boundedTime);
-    }
-
-    if (videoIndex === 1 && videoUrl2) {
-      seekTo2(boundedTime);
-    }
-  };
-
-  const clearVideoKeyMoments = (videoIndex: 0 | 1) => {
-    setKeyMoments((prev) => {
-      const nextKeyMoments = prev
-        .map((keyMoment) => {
-          const nextPositions: [KeyMomentPosition | null, KeyMomentPosition | null] = [...keyMoment.positions];
-          nextPositions[videoIndex] = null;
-
-          return {
-            ...keyMoment,
-            positions: nextPositions,
-          };
-        })
-        .filter((keyMoment) => keyMoment.positions.some(Boolean));
-
-      setSelectedKeyMomentId((currentSelectedId) => {
-        if (!currentSelectedId) {
-          return currentSelectedId;
-        }
-
-        return nextKeyMoments.some((keyMoment) => keyMoment.id === currentSelectedId) ? currentSelectedId : null;
-      });
-
-      return nextKeyMoments;
-    });
-  };
-
-  useEffect(() => {
-    videoUrlRef.current = videoUrl;
-  }, [videoUrl]);
-
-  useEffect(() => {
-    videoUrl2Ref.current = videoUrl2;
-  }, [videoUrl2]);
-
-  useEffect(() => {
-    return () => {
-      revokeObjectUrl(videoUrlRef.current);
-      revokeObjectUrl(videoUrl2Ref.current);
-    };
-  }, []);
-
-  const replaceVideoUrl = (videoIndex: 0 | 1, nextUrl: string) => {
-    if (videoIndex === 0) {
-      revokeObjectUrl(videoUrlRef.current);
-      setVideoUrl(nextUrl);
-      clearVideoKeyMoments(0);
-      return;
-    }
-
-    revokeObjectUrl(videoUrl2Ref.current);
-    setVideoUrl2(nextUrl);
-    clearVideoKeyMoments(1);
-  };
-
-  const handleRemoveVideo1 = () => {
-    revokeObjectUrl(videoUrlRef.current);
-    setVideoUrl(null);
-    clearVideoKeyMoments(0);
-  };
-
-  const handleRemoveVideo2 = () => {
-    revokeObjectUrl(videoUrl2Ref.current);
-    setVideoUrl2(null);
-    clearVideoKeyMoments(1);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      replaceVideoUrl(0, URL.createObjectURL(file));
-    }
-  };
-
-  const handleFileUpload2 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      replaceVideoUrl(1, URL.createObjectURL(file));
-    }
-  };
+  useKeyboardShortcuts({
+    shortcuts,
+    enabled: areShortcutsEnabled,
+  });
 
   const hasVideos = !!(videoUrl || videoUrl2);
+
+  const handleReplaceVideo = useCallback((videoIndex: 0 | 1, file: File) => {
+    clearVideoDimensions(videoIndex);
+    replaceVideoSource(videoIndex, file);
+  }, [clearVideoDimensions, replaceVideoSource]);
+
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (file && file.type.startsWith('video/')) {
+      handleReplaceVideo(0, file);
+    }
+  }, [handleReplaceVideo]);
+
+  const handleFileUpload2 = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (file && file.type.startsWith('video/')) {
+      handleReplaceVideo(1, file);
+    }
+  }, [handleReplaceVideo]);
+
+  const handleRemoveVideo1 = useCallback(() => {
+    clearVideoDimensions(0);
+    removeVideo(0);
+  }, [clearVideoDimensions, removeVideo]);
+
+  const handleRemoveVideo2 = useCallback(() => {
+    clearVideoDimensions(1);
+    removeVideo(1);
+  }, [clearVideoDimensions, removeVideo]);
 
 
   return (
     <div className="flex h-screen w-screen bg-zinc-50 font-sans dark:bg-black overflow-hidden">
       {/* Left Side - Video Area (2/3 width) */}
       <div className="w-2/3 h-full flex flex-col p-8 gap-6 bg-white dark:bg-black">
-        {/* Video Display Area - Two Videos Side by Side */}
-        <div className="flex gap-4 min-h-0" style={{ height: 'calc(100% - 10rem)' }}>
-          <VideoDropzone
-            label="Video 1"
-            videoUrl={videoUrl}
-            ref={videoRef}
-            onUpload={handleFileUpload}
-            isCalculating={calculatingByIndex[0]}
-          />
-          <VideoDropzone
-            label="Video 2"
-            videoUrl={videoUrl2}
-            ref={videoRef2}
-            onUpload={handleFileUpload2}
-            isCalculating={calculatingByIndex[1]}
-          />
-        </div>
+        <Tabs
+          value={resolvedViewMode}
+          onValueChange={(value) => handleSetViewMode(value as 'split' | 'overlay')}
+          className="min-h-0 flex-1 flex-col"
+        >
+          <div className="flex shrink-0 flex-col gap-3">
+            <div>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                Switch between split playback and shared overlay inspection.
+              </h2>
+            </div>
+            <TabsList className="self-start">
+              <TabsTrigger value="split" className="min-w-24">
+                Split View
+              </TabsTrigger>
+              <TabsTrigger value="overlay" disabled={!hasAnyOverlayData} className="min-w-24">
+                Overlay View
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="split" forceMount className="min-h-0 flex-1 data-[state=inactive]:hidden">
+            <div className="flex h-full gap-4 min-h-0">
+              <VideoDropzone
+                label="Video 1"
+                videoUrl={videoUrl}
+                ref={videoRef}
+                onUpload={handleFileUpload}
+                isCalculating={calculatingByIndex[0]}
+                trajectoryMetadata={overlayMetadataByIndex[0]}
+                trajectoryFileName={trajectoryByIndex[0].fileName}
+                trajectoryError={trajectoryByIndex[0].error}
+                trajectoryWarnings={trajectoryWarningsByIndex[0]}
+                canRenderTrajectory={canRenderOverlayByIndex[0]}
+                trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
+                visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+                showPose={showPose}
+                onTrajectoryUpload={(event) => handleTrajectoryUpload(0, event)}
+                onRemoveTrajectory={() => clearTrajectory(0)}
+                onVideoMetadataLoad={(metadata) => updateVideoDimensions(0, metadata)}
+              />
+              <VideoDropzone
+                label="Video 2"
+                videoUrl={videoUrl2}
+                ref={videoRef2}
+                onUpload={handleFileUpload2}
+                isCalculating={calculatingByIndex[1]}
+                trajectoryMetadata={overlayMetadataByIndex[1]}
+                trajectoryFileName={trajectoryByIndex[1].fileName}
+                trajectoryError={trajectoryByIndex[1].error}
+                trajectoryWarnings={trajectoryWarningsByIndex[1]}
+                canRenderTrajectory={canRenderOverlayByIndex[1]}
+                trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
+                visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+                showPose={showPose}
+                onTrajectoryUpload={(event) => handleTrajectoryUpload(1, event)}
+                onRemoveTrajectory={() => clearTrajectory(1)}
+                onVideoMetadataLoad={(metadata) => updateVideoDimensions(1, metadata)}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overlay" className="min-h-0 flex-1 data-[state=inactive]:hidden">
+            <OverlayComparisonStage
+              videoRef1={videoRef}
+              videoRef2={videoRef2}
+              metadata1={overlayMetadataByIndex[0]}
+              metadata2={overlayMetadataByIndex[1]}
+              canRender1={canRenderOverlayByIndex[0]}
+              canRender2={canRenderOverlayByIndex[1]}
+              visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+              historyWindowSec={trajectoryHistoryWindowSec}
+              showPose={showPose}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Designated Swipe Control Area */}
         <MouseControlPanel
@@ -304,6 +262,7 @@ export default function Home() {
           selectedKeyMomentId={selectedKeyMomentId}
           onSeek1={seekTo1}
           onSeek2={seekTo2}
+          onPlaybackSliderActivate={setActivePlaybackSliderIndex}
           onCreateKeyMomentFromVideo1={() => createKeyMomentFromVideo(0)}
           onCreateKeyMomentFromVideo2={() => createKeyMomentFromVideo(1)}
           onJumpToKeyMoment={jumpToKeyMoment}
@@ -317,48 +276,21 @@ export default function Home() {
           onRemoveVideo2={handleRemoveVideo2}
         />
 
-        {/* Stats Display */}
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg flex-1">
-          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">
-            Swipe Stats
-          </h2>
-
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                  Direction
-                </span>
-                <span className={`px-3 py-1 rounded-full font-medium text-sm ${direction === 'left'
-                  ? 'bg-purple-500 text-white'
-                  : direction === 'right'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-400 text-white'
-                  }`}>
-                  {direction === 'left' ? '← Left' : direction === 'right' ? 'Right →' : 'None'}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
-                  Speed
-                </span>
-                <span className="text-gray-800 dark:text-gray-200 font-mono text-sm">
-                  {speed.toFixed(1)} px/event
-                </span>
-              </div>
-              <div className="w-full bg-gray-300 dark:bg-gray-700 h-3 rounded-full overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-100"
-                  style={{ width: `${Math.min(speed * 2, 100)}%` }}
-                />
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <OverlaySettingsPanel
+          direction={direction}
+          speed={speed}
+          trajectoryHistorySeconds={trajectoryHistorySeconds}
+          trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
+          hasPoseMetadata={hasPoseMetadata}
+          showPose={showPose}
+          availableTrajectoryTrackNames={availableTrajectoryTrackNames}
+          hiddenTrajectoryTrackNames={hiddenTrajectoryTrackNames}
+          visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+          onSetTrajectoryHistorySeconds={setTrajectoryHistorySeconds}
+          onTogglePose={togglePose}
+          onShowAllTracks={showAllTrajectoryTracks}
+          onToggleTrajectoryTrack={toggleTrajectoryTrack}
+        />
       </div>
     </div>
   );
