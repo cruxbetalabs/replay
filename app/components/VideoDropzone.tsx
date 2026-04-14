@@ -8,11 +8,10 @@ type VideoDropzoneProps = {
     onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     className?: string;
     isCalculating?: boolean;
-    isUploading?: boolean;
 };
 
 export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzoneProps>(function VideoDropzone(
-    { label, videoUrl, onUpload, className, isCalculating = false, isUploading = false }: VideoDropzoneProps,
+    { label, videoUrl, onUpload, className, isCalculating = false }: VideoDropzoneProps,
     ref,
 ) {
     const [isDragOver, setIsDragOver] = useState(false);
@@ -82,14 +81,6 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                 </label>
             ) : (
                 <div className="relative w-full h-full flex items-center justify-center">
-                    {isUploading && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90">
-                            <div className="flex items-center gap-2 text-gray-700 text-sm font-medium">
-                                <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                                Uploading to server…
-                            </div>
-                        </div>
-                    )}
                     {isCalculating && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90">
                             <div className="flex items-center gap-2 text-gray-700 text-sm font-medium">
@@ -101,12 +92,12 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                     <video
                         ref={ref}
                         src={videoUrl}
-                        className={`max-w-full max-h-full object-contain transition-opacity duration-150 ${isCalculating || isUploading ? 'opacity-0' : 'opacity-100'
+                        className={`max-w-full max-h-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'
                             }`}
                         controls={false}
                         autoPlay={false}
                         preload="metadata"
-                        aria-busy={isCalculating || isUploading}
+                        aria-busy={isCalculating}
                         onLoadedData={() => {
                             console.debug('[VideoDropzone] Video loaded', {
                                 label,
