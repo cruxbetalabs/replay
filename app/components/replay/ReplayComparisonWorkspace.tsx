@@ -26,6 +26,8 @@ interface SplitViewContentProps {
 }
 
 interface ReplayComparisonWorkspaceProps {
+    // Adapters supply the split-view stage, while the workspace injects shared UI state
+    // like current track visibility, pose toggles, history window, and FPS activity.
     splitViewContent: (props: SplitViewContentProps) => ReactNode;
     videoRefs: [RefObject<HTMLVideoElement | null>, RefObject<HTMLVideoElement | null>];
     videoUrls: [string | null, string | null];
@@ -164,6 +166,7 @@ export function ReplayComparisonWorkspace({
 
                     <TabsContent value="split" forceMount className="min-h-0 flex-1 data-[state=inactive]:hidden">
                         <div className="flex h-full gap-4 min-h-0">
+                            {/* Keep split view synchronized with the workspace-owned overlay settings. */}
                             {splitViewContent({
                                 calculatingByIndex: [calculatingByIndex[0] ?? false, calculatingByIndex[1] ?? false],
                                 trajectoryHistoryWindowSec,
@@ -174,6 +177,7 @@ export function ReplayComparisonWorkspace({
                     </TabsContent>
 
                     <TabsContent value="overlay" className="min-h-0 flex-1 data-[state=inactive]:hidden">
+                        {/* Overlay view consumes the same visibility and pose state as split view. */}
                         <OverlayComparisonStage
                             videoRef1={videoRefs[0]}
                             videoRef2={videoRefs[1]}
@@ -232,6 +236,7 @@ export function ReplayComparisonWorkspace({
                     speed={speed}
                 />
 
+                {/* Settings mutate the same state that drives both tabs above. */}
                 <OverlaySettingsPanel
                     trajectoryHistorySeconds={trajectoryHistorySeconds}
                     trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
