@@ -51,12 +51,14 @@ const formatTrackLabel = (trackName: string) => trackName
 interface OverlaySettingsPanelProps {
     trajectoryHistorySeconds: number;
     trajectoryHistoryWindowSec: number | null;
+    showTrajectory: boolean;
     hasPoseMetadata: boolean;
     showPose: boolean;
     availableTrajectoryTrackNames: string[];
     hiddenTrajectoryTrackNames: string[];
     visibleTrajectoryTrackNames: string[];
     onSetTrajectoryHistorySeconds: (value: number) => void;
+    onToggleTrajectory: () => void;
     onTogglePose: () => void;
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
@@ -66,12 +68,14 @@ interface OverlaySettingsPanelProps {
 export function OverlaySettingsPanel({
     trajectoryHistorySeconds,
     trajectoryHistoryWindowSec,
+    showTrajectory,
     hasPoseMetadata,
     showPose,
     availableTrajectoryTrackNames,
     hiddenTrajectoryTrackNames,
     visibleTrajectoryTrackNames,
     onSetTrajectoryHistorySeconds,
+    onToggleTrajectory,
     onTogglePose,
     onShowAllTracks,
     onHideAllTracks,
@@ -92,29 +96,6 @@ export function OverlaySettingsPanel({
             </h2>
 
             <div className="space-y-4">
-                <div>
-                    <div className="mb-2 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            Trajectory History
-                        </span>
-                        <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
-                            {trajectoryHistoryWindowSec == null ? 'Full trail' : `${trajectoryHistorySeconds.toFixed(1)}s`}
-                        </span>
-                    </div>
-                    <input
-                        type="range"
-                        min={0}
-                        max={5}
-                        step={0.1}
-                        value={trajectoryHistorySeconds}
-                        onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
-                        className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-cyan-600 hover:accent-cyan-700 dark:bg-gray-700"
-                    />
-                    <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
-                        <span>0.0s keeps the full history visible</span>
-                        <span>Limit trail length client-side</span>
-                    </div>
-                </div>
 
                 <div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
@@ -140,6 +121,51 @@ export function OverlaySettingsPanel({
                 </div>
 
                 <div>
+                    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Trajectory Overlay
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Show movement trajectories
+                            </p>
+                        </div>
+                        <Switch
+                            checked={showTrajectory}
+                            onCheckedChange={onToggleTrajectory}
+                            aria-label="Toggle trajectory overlay"
+                        />
+                    </div>
+                </div>
+
+                {showTrajectory && (
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Trajectory History
+                            </span>
+                            <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                                {trajectoryHistoryWindowSec == null ? 'Full trail' : `${trajectoryHistorySeconds.toFixed(1)}s`}
+                            </span>
+                        </div>
+                        <input
+                            type="range"
+                            min={0}
+                            max={5}
+                            step={0.1}
+                            value={trajectoryHistorySeconds}
+                            onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
+                            className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-cyan-600 hover:accent-cyan-700 dark:bg-gray-700"
+                        />
+                        <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
+                            <span>0.0s keeps the full history visible</span>
+                            <span>Limit trail length client-side</span>
+                        </div>
+                    </div>
+                )}
+
+
+                {showTrajectory && <div>
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -159,7 +185,7 @@ export function OverlaySettingsPanel({
 
                     {availableTrajectoryTrackNames.length > 0 ? (
                         <fieldset className="space-y-4">
-                            <div className="relative h-[22rem] w-full overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-b from-cyan-50 to-white px-4 py-5 dark:border-cyan-950/60 dark:from-cyan-950/20 dark:to-gray-900">
+                            <div className="relative h-88 w-full overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-b from-cyan-50 to-white px-4 py-5 dark:border-cyan-950/60 dark:from-cyan-950/20 dark:to-gray-900">
                                 <div className="pointer-events-none absolute left-1/2 top-[16%] h-[44%] w-px -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
                                 <div className="pointer-events-none absolute left-1/2 top-[26%] h-px w-[46%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
                                 <div className="pointer-events-none absolute left-1/2 top-[60%] h-px w-[22%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
@@ -181,7 +207,7 @@ export function OverlaySettingsPanel({
                                                 }
                                             }}
                                             disabled={!isAvailable}
-                                            className={`absolute min-w-[6.5rem] rounded-full border px-3 py-2 text-center text-xs font-semibold shadow-sm transition-all ${track.className} ${isAvailable
+                                            className={`absolute min-w-26 rounded-full border px-3 py-2 text-center text-xs font-semibold shadow-sm transition-all ${track.className} ${isAvailable
                                                 ? isVisible
                                                     ? 'border-cyan-500 bg-cyan-500 text-white shadow-cyan-200 dark:border-cyan-400 dark:bg-cyan-400 dark:text-cyan-950 dark:shadow-transparent'
                                                     : 'border-gray-200 bg-white text-gray-500 hover:border-cyan-300 hover:text-cyan-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-cyan-700 dark:hover:text-cyan-300'
@@ -228,7 +254,7 @@ export function OverlaySettingsPanel({
                             Upload metadata JSON to populate track toggles.
                         </div>
                     )}
-                </div>
+                </div>}
             </div>
         </div>
     );

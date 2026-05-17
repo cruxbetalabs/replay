@@ -9,6 +9,7 @@ interface UseOverlaySettingsOptions {
 }
 
 export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlaySettingsOptions) {
+    const [showTrajectory, setShowTrajectory] = useState(true);
     const [showPose, setShowPose] = useState(true);
     const [trajectoryHistorySeconds, setTrajectoryHistorySeconds] = useState<number>(DEFAULT_TRAJECTORY_HISTORY_SECONDS);
     const [hiddenTrajectoryTrackNames, setHiddenTrajectoryTrackNames] = useState<string[]>([]);
@@ -39,11 +40,16 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         setHiddenTrajectoryTrackNames(availableTrajectoryTrackNames);
     }, [availableTrajectoryTrackNames]);
 
+    const toggleTrajectory = useCallback(() => {
+        setShowTrajectory((prev) => !prev);
+    }, []);
+
     const togglePose = useCallback(() => {
         setShowPose((prev) => !prev);
     }, []);
 
     return {
+        showTrajectory,
         showPose,
         trajectoryHistorySeconds,
         trajectoryHistoryWindowSec,
@@ -53,6 +59,7 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         toggleTrajectoryTrack,
         showAllTrajectoryTracks,
         hideAllTrajectoryTracks,
+        toggleTrajectory,
         togglePose,
     };
 }

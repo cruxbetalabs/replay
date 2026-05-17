@@ -31,12 +31,11 @@ export function ReplayComparisonStudio({
     const {
         trajectoryByIndex,
         overlayMetadataByIndex,
-        trajectoryWarningsByIndex,
         canRenderOverlayByIndex,
         availableTrajectoryTrackNames,
         hasAnyOverlayData,
         hasPoseMetadata,
-        handleTrajectoryUpload,
+        handleTrajectoryFile,
         clearTrajectory,
         updateVideoDimensions,
         clearVideoDimensions,
@@ -48,24 +47,6 @@ export function ReplayComparisonStudio({
         clearVideoDimensions(videoIndex);
         replaceVideoSource(videoIndex, file);
     }, [clearVideoDimensions, replaceVideoSource]);
-
-    const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (file && file.type.startsWith('video/')) {
-            handleReplaceVideo(0, file);
-        }
-    }, [handleReplaceVideo]);
-
-    const handleFileUpload2 = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-
-        if (file && file.type.startsWith('video/')) {
-            handleReplaceVideo(1, file);
-        }
-    }, [handleReplaceVideo]);
 
     const handleRemoveVideo1 = useCallback(() => {
         clearVideoDimensions(0);
@@ -93,17 +74,15 @@ export function ReplayComparisonStudio({
                 label="Video 1"
                 videoUrl={videoUrl}
                 ref={videoRef}
-                onUpload={handleFileUpload}
+                onVideoFileDrop={(file) => handleReplaceVideo(0, file)}
+                onJsonFileDrop={(file) => handleTrajectoryFile(0, file)}
                 isCalculating={calculatingByIndex[0]}
                 trajectoryMetadata={overlayMetadataByIndex[0]}
                 trajectoryFileName={trajectoryByIndex[0].fileName}
-                trajectoryError={trajectoryByIndex[0].error}
-                trajectoryWarnings={trajectoryWarningsByIndex[0]}
                 canRenderTrajectory={canRenderOverlayByIndex[0]}
                 trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
                 visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
                 showPose={showPose}
-                onTrajectoryUpload={(event) => handleTrajectoryUpload(0, event)}
                 onRemoveTrajectory={() => clearTrajectory(0)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(0, metadata)}
             />
@@ -111,17 +90,15 @@ export function ReplayComparisonStudio({
                 label="Video 2"
                 videoUrl={videoUrl2}
                 ref={videoRef2}
-                onUpload={handleFileUpload2}
+                onVideoFileDrop={(file) => handleReplaceVideo(1, file)}
+                onJsonFileDrop={(file) => handleTrajectoryFile(1, file)}
                 isCalculating={calculatingByIndex[1]}
                 trajectoryMetadata={overlayMetadataByIndex[1]}
                 trajectoryFileName={trajectoryByIndex[1].fileName}
-                trajectoryError={trajectoryByIndex[1].error}
-                trajectoryWarnings={trajectoryWarningsByIndex[1]}
                 canRenderTrajectory={canRenderOverlayByIndex[1]}
                 trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
                 visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
                 showPose={showPose}
-                onTrajectoryUpload={(event) => handleTrajectoryUpload(1, event)}
                 onRemoveTrajectory={() => clearTrajectory(1)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(1, metadata)}
             />
@@ -129,12 +106,10 @@ export function ReplayComparisonStudio({
     ), [
         canRenderOverlayByIndex,
         clearTrajectory,
-        handleFileUpload,
-        handleFileUpload2,
-        handleTrajectoryUpload,
+        handleReplaceVideo,
+        handleTrajectoryFile,
         overlayMetadataByIndex,
         trajectoryByIndex,
-        trajectoryWarningsByIndex,
         updateVideoDimensions,
         videoRef,
         videoRef2,

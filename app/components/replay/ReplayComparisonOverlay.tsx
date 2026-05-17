@@ -22,7 +22,6 @@ export interface ReplayComparisonOverlayProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     sources: [ReplayComparisonSource | null, ReplayComparisonSource | null];
-    title?: string;
     storageKey?: string | null;
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
 }
@@ -120,7 +119,6 @@ export function ReplayComparisonOverlay({
     open,
     onOpenChange,
     sources,
-    title,
     storageKey = null,
     onKeyMomentsChange,
 }: ReplayComparisonOverlayProps) {
@@ -256,7 +254,6 @@ export function ReplayComparisonOverlay({
                         hasAnyOverlayData={hasAnyOverlayData}
                         hasPoseMetadata={hasPoseMetadata}
                         storageKey={resolvedStorageKey}
-                        title={title}
                         showRemoveVideos={false}
                         onKeyMomentsChange={onKeyMomentsChange}
                     />

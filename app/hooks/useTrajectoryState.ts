@@ -63,13 +63,15 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
         return true;
     }, [setTrajectoryState]);
 
-    const handleTrajectoryFile = useCallback(async (videoIndex: VideoIndex, file: File) => {
+    const handleTrajectoryFile = useCallback(async (videoIndex: VideoIndex, file: File): Promise<{ error?: string; warnings?: string[] }> => {
         try {
             const rawText = await file.text();
             const { metadata, warnings } = parseTrajectoryMetadata(rawText);
 
-            if (rejectTrajectoryOnDurationMismatch(videoIndex, metadata, videoDimensionsByIndex[videoIndex])) {
-                return;
+            const durationMismatchWarning = getTrajectoryDurationMismatchWarning(metadata, videoDimensionsByIndex[videoIndex]);
+            if (durationMismatchWarning) {
+                setTrajectoryState(videoIndex, createRejectedTrajectoryState(durationMismatchWarning));
+                return { error: durationMismatchWarning };
             }
 
             setTrajectoryState(videoIndex, {
@@ -78,15 +80,18 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
                 warnings,
                 error: null,
             });
+            return { warnings };
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unable to parse trajectory metadata.';
             setTrajectoryState(videoIndex, {
                 fileName: file.name,
                 metadata: null,
                 warnings: [],
-                error: error instanceof Error ? error.message : 'Unable to parse trajectory metadata.',
+                error: errorMessage,
             });
+            return { error: errorMessage };
         }
-    }, [rejectTrajectoryOnDurationMismatch, setTrajectoryState, videoDimensionsByIndex]);
+    }, [setTrajectoryState, videoDimensionsByIndex]);
 
     const handleTrajectoryUpload = useCallback((videoIndex: VideoIndex, event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -166,6 +171,7 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
         hasAnyOverlayData,
         hasPoseMetadata,
         handleTrajectoryUpload,
+        handleTrajectoryFile,
         clearTrajectory,
         updateVideoDimensions,
         clearVideoDimensions,

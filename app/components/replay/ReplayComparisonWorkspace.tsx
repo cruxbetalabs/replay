@@ -2,11 +2,9 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { OverlaySettingsPanel } from '../OverlaySettingsPanel';
-import { MouseControlPanel } from '../MouseControlPanel';
-import { SwipeStatsPanel } from '../SwipeStatsPanel';
 import { OverlayComparisonStage } from '../OverlayComparisonStage';
-import { VideoControlPanel } from '../VideoControlPanel';
+import { MouseControlPanel } from '../MouseControlPanel';
+import { ReplayComparisonSidebar } from './ReplayComparisonSidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useComparisonShortcuts } from '../../hooks/useComparisonShortcuts';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -36,7 +34,6 @@ interface ReplayComparisonWorkspaceProps {
     availableTrajectoryTrackNames: string[];
     hasAnyOverlayData: boolean;
     hasPoseMetadata: boolean;
-    title?: string;
     storageKey?: string | null;
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
@@ -53,7 +50,6 @@ export function ReplayComparisonWorkspace({
     availableTrajectoryTrackNames,
     hasAnyOverlayData,
     hasPoseMetadata,
-    title = 'Switch between split playback and shared overlay inspection.',
     storageKey = null,
     showRemoveVideos = true,
     onRemoveVideo1,
@@ -105,6 +101,7 @@ export function ReplayComparisonWorkspace({
     });
 
     const {
+        showTrajectory,
         showPose,
         trajectoryHistorySeconds,
         trajectoryHistoryWindowSec,
@@ -114,8 +111,11 @@ export function ReplayComparisonWorkspace({
         toggleTrajectoryTrack,
         showAllTrajectoryTracks,
         hideAllTrajectoryTracks,
+        toggleTrajectory,
         togglePose,
     } = useOverlaySettings({ availableTrajectoryTrackNames });
+
+    const effectiveVisibleTrackNames = showTrajectory ? visibleTrajectoryTrackNames : [];
 
     const resolvedViewMode = viewMode === 'overlay' && !hasAnyOverlayData ? 'split' : viewMode;
 
@@ -151,9 +151,6 @@ export function ReplayComparisonWorkspace({
                     className="min-h-0 flex-1 flex-col"
                 >
                     <div className="flex shrink-0 flex-col">
-                        <h2 className="mb-3 mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                            {title}
-                        </h2>
                         <TabsList className="self-start">
                             <TabsTrigger value="split" className="min-w-24">
                                 Split View
@@ -170,7 +167,7 @@ export function ReplayComparisonWorkspace({
                             {splitViewContent({
                                 calculatingByIndex: [calculatingByIndex[0] ?? false, calculatingByIndex[1] ?? false],
                                 trajectoryHistoryWindowSec,
-                                visibleTrajectoryTrackNames,
+                                visibleTrajectoryTrackNames: effectiveVisibleTrackNames,
                                 showPose,
                             })}
                         </div>
@@ -185,7 +182,7 @@ export function ReplayComparisonWorkspace({
                             metadata2={overlayMetadataByIndex[1]}
                             canRender1={canRenderOverlayByIndex[0]}
                             canRender2={canRenderOverlayByIndex[1]}
-                            visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+                            visibleTrajectoryTrackNames={effectiveVisibleTrackNames}
                             historyWindowSec={trajectoryHistoryWindowSec}
                             showPose={showPose}
                         />
@@ -199,59 +196,53 @@ export function ReplayComparisonWorkspace({
                 />
             </div>
 
-            <div className="w-1/3 h-full flex flex-col p-8 gap-6 bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700 overflow-y-auto">
-                <VideoControlPanel
-                    hasVideos={hasVideos}
-                    hasVideo1={hasVideoByIndex[0]}
-                    hasVideo2={hasVideoByIndex[1]}
-                    duration1={duration1}
-                    duration2={duration2}
-                    currentTime1={currentTime1}
-                    currentTime2={currentTime2}
-                    fps1={fps1}
-                    fps2={fps2}
-                    seekAmount1={seekAmount1}
-                    seekAmount2={seekAmount2}
-                    keyMoments={keyMoments}
-                    selectedKeyMomentId={selectedKeyMomentId}
-                    onSeek1={seekTo1}
-                    onSeek2={seekTo2}
-                    onPlaybackSliderActivate={setActivePlaybackSliderIndex}
-                    onCreateKeyMomentFromVideo1={() => createKeyMomentFromVideo(0)}
-                    onCreateKeyMomentFromVideo2={() => createKeyMomentFromVideo(1)}
-                    onJumpToKeyMoment={jumpToKeyMoment}
-                    onSelectKeyMoment={jumpToKeyMoment}
-                    onSetKeyMomentTime1={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 0, time)}
-                    onSetKeyMomentTime2={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 1, time)}
-                    onUpdateKeyMomentFromVideo1={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 0)}
-                    onUpdateKeyMomentFromVideo2={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 1)}
-                    onDeleteKeyMoment={deleteKeyMoment}
-                    showRemoveVideos={showRemoveVideos}
-                    onRemoveVideo1={onRemoveVideo1}
-                    onRemoveVideo2={onRemoveVideo2}
-                />
-
-                <SwipeStatsPanel
-                    direction={direction}
-                    speed={speed}
-                />
-
-                {/* Settings mutate the same state that drives both tabs above. */}
-                <OverlaySettingsPanel
-                    trajectoryHistorySeconds={trajectoryHistorySeconds}
-                    trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
-                    hasPoseMetadata={hasPoseMetadata}
-                    showPose={showPose}
-                    availableTrajectoryTrackNames={availableTrajectoryTrackNames}
-                    hiddenTrajectoryTrackNames={hiddenTrajectoryTrackNames}
-                    visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
-                    onSetTrajectoryHistorySeconds={setTrajectoryHistorySeconds}
-                    onTogglePose={togglePose}
-                    onShowAllTracks={showAllTrajectoryTracks}
-                    onHideAllTracks={hideAllTrajectoryTracks}
-                    onToggleTrajectoryTrack={toggleTrajectoryTrack}
-                />
-            </div>
+            <ReplayComparisonSidebar
+                hasVideos={hasVideos}
+                hasVideo1={hasVideoByIndex[0]}
+                hasVideo2={hasVideoByIndex[1]}
+                duration1={duration1}
+                duration2={duration2}
+                currentTime1={currentTime1}
+                currentTime2={currentTime2}
+                fps1={fps1}
+                fps2={fps2}
+                seekAmount1={seekAmount1}
+                seekAmount2={seekAmount2}
+                keyMoments={keyMoments}
+                selectedKeyMomentId={selectedKeyMomentId}
+                onSeek1={seekTo1}
+                onSeek2={seekTo2}
+                onPlaybackSliderActivate={setActivePlaybackSliderIndex}
+                onCreateKeyMomentFromVideo1={() => createKeyMomentFromVideo(0)}
+                onCreateKeyMomentFromVideo2={() => createKeyMomentFromVideo(1)}
+                onJumpToKeyMoment={jumpToKeyMoment}
+                onSelectKeyMoment={jumpToKeyMoment}
+                onSetKeyMomentTime1={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 0, time)}
+                onSetKeyMomentTime2={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 1, time)}
+                onUpdateKeyMomentFromVideo1={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 0)}
+                onUpdateKeyMomentFromVideo2={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 1)}
+                onDeleteKeyMoment={deleteKeyMoment}
+                showRemoveVideos={showRemoveVideos}
+                onRemoveVideo1={onRemoveVideo1}
+                onRemoveVideo2={onRemoveVideo2}
+                direction={direction}
+                speed={speed}
+                hasAnyOverlayData={hasAnyOverlayData}
+                trajectoryHistorySeconds={trajectoryHistorySeconds}
+                trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
+                showTrajectory={showTrajectory}
+                hasPoseMetadata={hasPoseMetadata}
+                showPose={showPose}
+                availableTrajectoryTrackNames={availableTrajectoryTrackNames}
+                hiddenTrajectoryTrackNames={hiddenTrajectoryTrackNames}
+                visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+                onSetTrajectoryHistorySeconds={setTrajectoryHistorySeconds}
+                onToggleTrajectory={toggleTrajectory}
+                onTogglePose={togglePose}
+                onShowAllTracks={showAllTrajectoryTracks}
+                onHideAllTracks={hideAllTrajectoryTracks}
+                onToggleTrajectoryTrack={toggleTrajectoryTrack}
+            />
         </div>
     );
 }
