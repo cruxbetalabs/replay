@@ -37,6 +37,38 @@ export function findAnchorLandmarks(connections: [number, number][], topN = 2): 
 }
 
 /**
+ * Multi-source BFS from every anchor simultaneously.
+ * Returns a map of joint index → minimum hop distance to the nearest anchor.
+ *
+ * This is used during branch propagation to determine kinematic direction:
+ * a joint is "downstream" (away from the body root) only if its distance to
+ * the nearest anchor is strictly greater than its parent's distance. This
+ * correctly handles cross-body connections (shoulder-shoulder, hip-hip) that
+ * would otherwise flood the whole skeleton when propagating limb displacements.
+ */
+export function computeDistToNearestAnchor(
+    adjacencyMap: Map<number, number[]>,
+    anchors: Set<number>,
+): Map<number, number> {
+    const dist = new Map<number, number>();
+    const queue: number[] = [];
+    for (const anchor of anchors) {
+        dist.set(anchor, 0);
+        queue.push(anchor);
+    }
+    while (queue.length > 0) {
+        const node = queue.shift()!;
+        for (const neighbor of adjacencyMap.get(node) ?? []) {
+            if (!dist.has(neighbor)) {
+                dist.set(neighbor, dist.get(node)! + 1);
+                queue.push(neighbor);
+            }
+        }
+    }
+    return dist;
+}
+
+/**
  * BFS from `startIndex` outward until an anchor is reached.
  * Returns the ordered chain [startIndex, …, anchorIndex].
  * If the start is itself an anchor the chain is just [startIndex].
@@ -86,6 +118,13 @@ export function solveFABRIK(
     targetPos: Pos2D,
     iterations = 10,
     initialZ?: Map<number, number | null>,
+    /**
+     * When provided, bone lengths are computed from these positions instead of
+     * `initialPositions`. Pass the raw frame landmark positions (no overrides)
+     * so that bone lengths stay anchored to the original pose and never drift
+     * across multiple drag gestures.
+     */
+    boneReferencePositions?: Map<number, Pos2D>,
 ): Map<number, Pos2D> {
     if (chain.length === 0) return new Map();
 
@@ -100,11 +139,13 @@ export function solveFABRIK(
         return p ? { x: p.x, y: p.y } : { x: 0, y: 0 };
     });
 
-    // Bone lengths are frozen from the initial pose so they don't drift.
-    // When z values are available, use 3D distance for a better length estimate.
+    // Bone lengths come from the reference positions (raw frame) when provided,
+    // falling back to the working positions.  Using raw frame positions prevents
+    // bone lengths from drifting across multiple drag gestures.
+    const refPositions = boneReferencePositions ?? initialPositions;
     const boneLengths = chain.slice(0, -1).map((_, i) => {
-        const a = positions[i];
-        const b = positions[i + 1];
+        const a = refPositions.get(chain[i]) ?? positions[i];
+        const b = refPositions.get(chain[i + 1]) ?? positions[i + 1];
         const zA = initialZ?.get(chain[i]) ?? null;
         const zB = initialZ?.get(chain[i + 1]) ?? null;
         if (zA != null && zB != null) {
@@ -122,12 +163,13 @@ export function solveFABRIK(
             const prev = positions[i - 1];
             const curr = positions[i];
             const dist = Math.hypot(curr.x - prev.x, curr.y - prev.y);
-            if (dist < 1e-6) continue;
-            const ratio = boneLengths[i - 1] / dist;
-            positions[i] = {
-                x: prev.x + (curr.x - prev.x) * ratio,
-                y: prev.y + (curr.y - prev.y) * ratio,
-            };
+            if (dist > 0) {
+                const ratio = boneLengths[i - 1] / dist;
+                positions[i] = {
+                    x: prev.x + (curr.x - prev.x) * ratio,
+                    y: prev.y + (curr.y - prev.y) * ratio,
+                };
+            }
         }
 
         // ── Backward pass: restore anchor, push back toward end-effector ──
@@ -136,12 +178,13 @@ export function solveFABRIK(
             const next = positions[i + 1];
             const curr = positions[i];
             const dist = Math.hypot(curr.x - next.x, curr.y - next.y);
-            if (dist < 1e-6) continue;
-            const ratio = boneLengths[i] / dist;
-            positions[i] = {
-                x: next.x + (curr.x - next.x) * ratio,
-                y: next.y + (curr.y - next.y) * ratio,
-            };
+            if (dist > 0) {
+                const ratio = boneLengths[i] / dist;
+                positions[i] = {
+                    x: next.x + (curr.x - next.x) * ratio,
+                    y: next.y + (curr.y - next.y) * ratio,
+                };
+            }
         }
     }
 
@@ -318,11 +361,38 @@ export const FACE_LANDMARK_INDICES = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
  *   Feet   – ankle + heel + foot-index markers
  */
 export const JOINT_GROUPS: ReadonlyArray<readonly number[]> = [
-    [16, 22, 18, 20], // "left hand"  (user-specified) — representative = 16
-    [15, 21, 17, 19], // "right hand" (symmetric)      — representative = 15
-    [27, 29, 31],     // left foot  — representative = 27 (ankle)
-    [28, 30, 32],     // right foot — representative = 28 (ankle)
+    [15, 21, 17, 19], // left hand  — representative = 15 (left_wrist)
+    [16, 22, 18, 20], // right hand — representative = 16 (right_wrist)
+    [27, 29, 31],     // left foot  — representative = 27 (left_ankle)
+    [28, 30, 32],     // right foot — representative = 28 (right_ankle)
 ] as const;
+
+/**
+ * When a hip joint is dragged directly it is also the IK anchor, so
+ * `findChainToAnchor` would return a chain of length 1 and the hip would
+ * teleport to the cursor with no IK constraint.  Instead, we use the ankle
+ * of the same leg as the effective anchor, giving a chain of
+ * [hip → knee → ankle] so the drag is properly constrained by the leg.
+ *
+ * MediaPipe Pose: 23 = left_hip, 24 = right_hip, 27 = left_ankle, 28 = right_ankle.
+ */
+export const HIP_TO_ANKLE_ANCHOR = new Map<number, number>([
+    [23, 27], // left hip  → left ankle
+    [24, 28], // right hip → right ankle
+]);
+
+/**
+ * Shoulder joints are connected to each other (11↔12) as well as to their
+ * respective hips.  When one shoulder is displaced by the IK solver, the
+ * other shoulder (and its entire arm subtree) should receive the same rigid
+ * offset so the shoulder-width bone never stretches.
+ *
+ * MediaPipe Pose: 11 = left_shoulder, 12 = right_shoulder.
+ */
+export const SHOULDER_SIBLINGS: ReadonlyMap<number, number> = new Map([
+    [11, 12], // left_shoulder  ↔  right_shoulder
+    [12, 11],
+]);
 
 /** Return the joint group an index belongs to, or `null` if ungrouped. */
 export function getLandmarkGroup(index: number): readonly number[] | null {

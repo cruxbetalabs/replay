@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { OverlayComparisonStage } from '../OverlayComparisonStage';
 import { MouseControlPanel } from '../MouseControlPanel';
+import { KeyboardShortcutsDialog } from '../KeyboardShortcutsDialog';
 import { ReplayComparisonSidebar } from './ReplayComparisonSidebar';
+import { ReplayMenubar } from './ReplayMenubar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useComparisonShortcuts } from '../../hooks/useComparisonShortcuts';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -15,6 +17,7 @@ import { useVideoControl } from '../../hooks/useVideoControl';
 import { useVideoFps } from '../../hooks/useVideoFps';
 import type { KeyMoment } from '../../lib/key-moments';
 import type { TrajectoryMetadata } from '../../lib/trajectory-types';
+import type { PresetComparison } from '../../lib/presets';
 
 interface SplitViewContentProps {
     calculatingByIndex: [boolean, boolean];
@@ -40,6 +43,10 @@ interface ReplayComparisonWorkspaceProps {
     onRemoveVideo2?: () => void;
     onRemoveMetadata?: () => void;
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
+    presets?: PresetComparison[];
+    onLoadPreset?: (preset: PresetComparison) => void;
+    presetKeyMomentsStamp?: string | null;
+    presetKeyMomentsState?: { keyMoments: KeyMoment[]; selectedKeyMomentId: string | null } | null;
 }
 
 export function ReplayComparisonWorkspace({
@@ -57,8 +64,13 @@ export function ReplayComparisonWorkspace({
     onRemoveVideo2,
     onRemoveMetadata,
     onKeyMomentsChange,
+    presets,
+    onLoadPreset,
+    presetKeyMomentsStamp,
+    presetKeyMomentsState,
 }: ReplayComparisonWorkspaceProps) {
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
+    const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const hasVideoByIndex: [boolean, boolean] = [Boolean(videoUrls[0]), Boolean(videoUrls[1])];
 
     const { boxRef, direction, speed, movement, controlMode } = useMouseControl({ controlMode: 'both' });
@@ -92,6 +104,7 @@ export function ReplayComparisonWorkspace({
         setKeyMomentTime,
         keyMomentShortcuts,
         addKeyShortcut,
+        resetKeyMoments,
     } = useKeyMoments({
         currentTimeByIndex: [currentTime1, currentTime2],
         durationByIndex: [duration1, duration2],
@@ -120,6 +133,15 @@ export function ReplayComparisonWorkspace({
 
     const effectiveVisibleTrackNames = showTrajectory ? visibleTrajectoryTrackNames : [];
 
+    const appliedPresetStampRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!presetKeyMomentsStamp || presetKeyMomentsStamp === appliedPresetStampRef.current) return;
+        appliedPresetStampRef.current = presetKeyMomentsStamp;
+        if (presetKeyMomentsState) {
+            resetKeyMoments(presetKeyMomentsState.keyMoments, presetKeyMomentsState.selectedKeyMomentId);
+        }
+    }, [presetKeyMomentsStamp, presetKeyMomentsState, resetKeyMoments]);
+
     const resolvedViewMode = viewMode === 'overlay' && !hasAnyOverlayData ? 'split' : viewMode;
 
     const handleSetViewMode = useCallback((nextViewMode: 'split' | 'overlay') => {
@@ -135,6 +157,7 @@ export function ReplayComparisonWorkspace({
         resolvedViewMode,
         onSetViewMode: handleSetViewMode,
         onTogglePose: togglePose,
+        onToggleTrajectory: toggleTrajectory,
         onToggleTrajectoryTrack: toggleTrajectoryTrack,
     });
 
@@ -143,25 +166,77 @@ export function ReplayComparisonWorkspace({
         enabled: areShortcutsEnabled,
     });
 
+    useEffect(() => {
+        const isTypingTarget = (target: EventTarget | null) => {
+            if (!(target instanceof HTMLElement)) return false;
+            if (target.isContentEditable) return true;
+            if (target instanceof HTMLTextAreaElement) return true;
+            if (target instanceof HTMLInputElement) {
+                return !['range', 'button', 'checkbox', 'radio', 'file', 'submit'].includes(target.type);
+            }
+            return false;
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isTypingTarget(e.target)) return;
+            if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setShortcutsOpen((prev) => !prev);
+            } else if (e.key === '[') {
+                e.preventDefault();
+                togglePose();
+            } else if (e.key === ']') {
+                e.preventDefault();
+                toggleTrajectory();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [togglePose, toggleTrajectory]);
+
     const hasVideos = Boolean(videoUrls[0] || videoUrls[1]);
 
     return (
         <div className="flex h-full w-full min-h-0 overflow-hidden bg-zinc-50 font-sans dark:bg-black">
+            <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
             <div className="flex-1 min-w-0 h-full flex flex-col p-8 gap-6 bg-white dark:bg-black">
                 <Tabs
                     value={resolvedViewMode}
                     onValueChange={(value) => handleSetViewMode(value as 'split' | 'overlay')}
                     className="min-h-0 flex-1 flex-col"
                 >
-                    <div className="flex shrink-0 flex-col">
-                        <TabsList className="self-start">
-                            <TabsTrigger value="split" className="min-w-24">
-                                Split View
-                            </TabsTrigger>
-                            <TabsTrigger value="overlay" disabled={!hasAnyOverlayData} className="min-w-24">
-                                Overlay View
-                            </TabsTrigger>
-                        </TabsList>
+                    <div className="flex shrink-0 items-center justify-between">
+                        <ReplayMenubar
+                            resolvedViewMode={resolvedViewMode}
+                            hasAnyOverlayData={hasAnyOverlayData}
+                            onSetViewMode={handleSetViewMode}
+                            hasPoseMetadata={hasPoseMetadata}
+                            showTrajectory={showTrajectory}
+                            showPose={showPose}
+                            onToggleTrajectory={toggleTrajectory}
+                            onTogglePose={togglePose}
+                            onShowAllTracks={showAllTrajectoryTracks}
+                            onHideAllTracks={hideAllTrajectoryTracks}
+                            hasVideo1={hasVideoByIndex[0]}
+                            hasVideo2={hasVideoByIndex[1]}
+                            showRemoveVideos={showRemoveVideos}
+                            onRemoveVideo1={onRemoveVideo1}
+                            onRemoveVideo2={onRemoveVideo2}
+                            onRemoveMetadata={onRemoveMetadata}
+                            onOpenShortcuts={() => setShortcutsOpen(true)}
+                            presets={presets}
+                            onLoadPreset={onLoadPreset}
+                        />
+                        <div className="flex items-center gap-2">
+                            <TabsList>
+                                <TabsTrigger value="split" className="min-w-24">
+                                    Split View
+                                </TabsTrigger>
+                                <TabsTrigger value="overlay" disabled={!hasAnyOverlayData} className="min-w-24">
+                                    Overlay View
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
                     </div>
 
                     <TabsContent value="split" forceMount className="min-h-0 flex-1 data-[state=inactive]:hidden">

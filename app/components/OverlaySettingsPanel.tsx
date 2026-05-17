@@ -24,21 +24,25 @@ const BODY_TRACK_LAYOUT = [
     {
         trackName: 'upper_body_center',
         label: 'Upper Body',
+        shortcutKey: 'w',
         className: 'left-1/2 top-[34%] -translate-x-1/2',
     },
     {
         trackName: 'hip_mid',
         label: 'Hip',
+        shortcutKey: 'q',
         className: 'left-1/2 top-[56%] -translate-x-1/2',
     },
     {
         trackName: 'left_foot',
         label: 'Left Foot',
+        shortcutKey: 'y',
         className: 'left-[28%] bottom-3 -translate-x-1/2',
     },
     {
         trackName: 'right_foot',
         label: 'Right Foot',
+        shortcutKey: 'u',
         className: 'left-[72%] bottom-3 -translate-x-1/2',
     },
 ] as const;
@@ -122,16 +126,18 @@ export function OverlaySettingsPanel({
                             {hasPoseMetadata ? 'Show pose landmarks' : 'Unavailable'}
                         </p>
                     </div>
-                    <Switch
-                        checked={hasPoseMetadata && showPose}
-                        onCheckedChange={(checked) => {
-                            if (hasPoseMetadata && checked !== showPose) {
-                                onTogglePose();
-                            }
-                        }}
-                        disabled={!hasPoseMetadata}
-                        aria-label="Toggle pose overlay"
-                    />
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            checked={hasPoseMetadata && showPose}
+                            onCheckedChange={(checked) => {
+                                if (hasPoseMetadata && checked !== showPose) {
+                                    onTogglePose();
+                                }
+                            }}
+                            disabled={!hasPoseMetadata}
+                            aria-label="Toggle pose overlay"
+                        />
+                    </div>
                 </div>
             </div>
 

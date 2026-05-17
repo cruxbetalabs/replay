@@ -269,6 +269,11 @@ export function useKeyMoments({
         setSelectedKeyMomentId(null);
     }, []);
 
+    const resetKeyMoments = useCallback((nextKeyMoments: KeyMoment[], nextSelectedId: string | null) => {
+        setKeyMoments(nextKeyMoments);
+        setSelectedKeyMomentId(nextSelectedId);
+    }, []);
+
     return {
         activePlaybackSliderIndex,
         keyMoments,
@@ -282,5 +287,6 @@ export function useKeyMoments({
         setKeyMomentTime,
         keyMomentShortcuts,
         addKeyShortcut,
+        resetKeyMoments,
     };
 }

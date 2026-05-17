@@ -1,0 +1,4 @@
+- [ ] when user is scrubbing the playback reset the psoe automatically
+- [ ] annotation timeline : allow anntoate with marker, select box (highlight) for certain range of clip, provide note of descrtion
+- [x] we have some preset exampel in `/public`, allow load preset comparisions
+- [ ] allow add problem context to the scene as well

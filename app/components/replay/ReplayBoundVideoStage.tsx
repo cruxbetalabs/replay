@@ -154,7 +154,7 @@ export function ReplayBoundVideoStage({
                     </div>
                     {showPose && hasRenderableTrajectory && (
                         <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
-                            <span className="whitespace-nowrap text-xs font-medium text-white/70">overlay mask</span>
+                            <span className="whitespace-nowrap text-xs font-medium text-white/70">Overlay mask</span>
                             <input
                                 type="range"
                                 min={0}
