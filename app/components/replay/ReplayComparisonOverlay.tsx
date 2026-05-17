@@ -189,6 +189,7 @@ export function ReplayComparisonOverlay({
         <>
             <ReplayBoundVideoStage
                 label={sources[0]?.label ?? 'Video 1'}
+                accentClassName="bg-blue-500"
                 videoUrl={videoUrls[0]}
                 videoRef={videoRef1}
                 isCalculating={calculatingByIndex[0]}
@@ -204,6 +205,7 @@ export function ReplayComparisonOverlay({
             />
             <ReplayBoundVideoStage
                 label={sources[1]?.label ?? 'Video 2'}
+                accentClassName="bg-emerald-500"
                 videoUrl={videoUrls[1]}
                 videoRef={videoRef2}
                 isCalculating={calculatingByIndex[1]}

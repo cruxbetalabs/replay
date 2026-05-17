@@ -39,3 +39,33 @@ Build with:
 ```bash
 npm run build
 ```
+
+## Playback & Overlay Alignment
+
+The `<video>` element is the single source of truth for current playback position. There is no shared React state between the video and the trajectory overlay — they stay in sync because the overlay always reads `videoRef.current.currentTime` directly at draw time.
+
+### How it works
+
+**React state (`currentTime1 / currentTime2` in `useVideoControl`)** is UI-only. It is updated immediately on slider drag so the scrubber stays responsive, but the overlay never reads these values. The actual `video.currentTime` assignment is rAF-throttled so the browser decoder queue doesn't flood during fast scrubbing.
+
+**`TrajectoryOverlay` is event-driven, not prop-driven.** It attaches listeners directly to the `<video>` DOM element and draws into a `<canvas>` positioned on top of the video:
+
+| Event | Overlay response |
+|-------|-----------------|
+| `play` | Start render loop (rVFC or rAF) |
+| `pause` | Stop loop, draw one final frame |
+| `seeking` | `renderFrame()` immediately — `currentTime` is already updated on the element before decode finishes, so the trajectory responds instantly during scrubbing |
+| `seeked` | `renderOnce()` — authoritative redraw once the decoded pixel frame is ready |
+| `ResizeObserver` | `renderOnce()` on container resize or DPR change |
+
+**Render loop strategy:**
+- If `requestVideoFrameCallback` (rVFC) is available, the overlay fires exactly once per decoded video frame — perfectly GPU-synced with zero wasted work while paused.
+- Otherwise it falls back to a plain `requestAnimationFrame` loop that only runs while the video is playing.
+
+**Pre-computation:** `maxVelocityByTrack` (used to normalize arrow lengths) is computed once via `useMemo` keyed on `metadata`, not on every frame or every render-loop tick.
+
+Relevant files:
+
+- `app/components/TrajectoryOverlay.tsx` — canvas rendering, event listeners, render loop
+- `app/hooks/useVideoControl.ts` — rAF-throttled seeking, playback state for the UI
+- `app/hooks/useOverlaySettings.ts` — overlay visibility toggles (trajectory, pose, history window)

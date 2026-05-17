@@ -27,6 +27,7 @@ interface ReplayComparisonSidebarProps {
     onCreateKeyMomentFromVideo2: () => void;
     onJumpToKeyMoment: (keyMomentId: string) => void;
     onSelectKeyMoment: (keyMomentId: string) => void;
+    onDeselectKeyMoment: () => void;
     onSetKeyMomentTime1: (keyMomentId: string, time: number) => void;
     onSetKeyMomentTime2: (keyMomentId: string, time: number) => void;
     onUpdateKeyMomentFromVideo1: (keyMomentId: string) => void;
@@ -54,6 +55,7 @@ interface ReplayComparisonSidebarProps {
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
+    onRemoveMetadata?: () => void;
 }
 
 export function ReplayComparisonSidebar({
@@ -77,6 +79,7 @@ export function ReplayComparisonSidebar({
     onCreateKeyMomentFromVideo2,
     onJumpToKeyMoment,
     onSelectKeyMoment,
+    onDeselectKeyMoment,
     onSetKeyMomentTime1,
     onSetKeyMomentTime2,
     onUpdateKeyMomentFromVideo1,
@@ -102,9 +105,10 @@ export function ReplayComparisonSidebar({
     onShowAllTracks,
     onHideAllTracks,
     onToggleTrajectoryTrack,
+    onRemoveMetadata,
 }: ReplayComparisonSidebarProps) {
     return (
-        <div className="w-128 shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
+        <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
             <div className="flex flex-col p-8 gap-6">
                 <VideoControlPanel
                     hasVideos={hasVideos}
@@ -127,6 +131,7 @@ export function ReplayComparisonSidebar({
                     onCreateKeyMomentFromVideo2={onCreateKeyMomentFromVideo2}
                     onJumpToKeyMoment={onJumpToKeyMoment}
                     onSelectKeyMoment={onSelectKeyMoment}
+                    onDeselectKeyMoment={onDeselectKeyMoment}
                     onSetKeyMomentTime1={onSetKeyMomentTime1}
                     onSetKeyMomentTime2={onSetKeyMomentTime2}
                     onUpdateKeyMomentFromVideo1={onUpdateKeyMomentFromVideo1}
@@ -157,6 +162,7 @@ export function ReplayComparisonSidebar({
                     onShowAllTracks={onShowAllTracks}
                     onHideAllTracks={onHideAllTracks}
                     onToggleTrajectoryTrack={onToggleTrajectoryTrack}
+                    onRemoveMetadata={onRemoveMetadata}
                 />}
             </div>
         </div>

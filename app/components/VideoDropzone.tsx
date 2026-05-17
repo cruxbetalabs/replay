@@ -447,8 +447,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 <FormatChip icon={<FileVideo className="h-3 w-3" />} label="MOV" />
                                 <FormatChip
                                     icon={<FileJson2 className="h-3 w-3" />}
-                                    label="JSON — Metadata"
-                                    onClick={() => jsonInputRef.current?.click()}
+                                    label="JSON (Metadata)"
+
                                 />
                             </div>
                         </div>
@@ -493,6 +493,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             className={`max-h-full max-w-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}
                             controls={false}
                             autoPlay={false}
+                            playsInline
                             preload="metadata"
                             aria-busy={isCalculating}
                             onLoadedData={() => {

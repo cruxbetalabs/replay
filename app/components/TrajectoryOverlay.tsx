@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import type {
     PoseFrame,
@@ -234,6 +234,22 @@ export function TrajectoryOverlay({
 }: TrajectoryOverlayProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    // Keyed only on metadata so dependency changes like visibleTrackNames or
+    // historyWindowSec don't trigger a full O(n) rescan of every sample.
+    const maxVelocityByTrack = useMemo(() => {
+        const map = new Map<string, number>();
+        if (!metadata) return map;
+        for (const [trackName, track] of Object.entries(metadata.tracks)) {
+            let max = 0;
+            for (const sample of track.samples) {
+                const m = getVectorMagnitude(sample.velocityVector2DPerSecond);
+                if (m > max) max = m;
+            }
+            map.set(trackName, max);
+        }
+        return map;
+    }, [metadata]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
@@ -308,9 +324,7 @@ export function TrajectoryOverlay({
                 }
 
                 const latestSample = track.samples[endIndex];
-                const maxVelocityMagnitude = track.samples.reduce((currentMax, sample) => (
-                    Math.max(currentMax, getVectorMagnitude(sample.velocityVector2DPerSecond))
-                ), 0);
+                const maxVelocityMagnitude = maxVelocityByTrack.get(trackName) ?? 0;
 
                 const startIndex = historyWindowSec == null
                     ? 1
@@ -438,27 +452,92 @@ export function TrajectoryOverlay({
             });
         };
 
-        const loop = () => {
-            resizeCanvas();
-            renderFrame();
-            frameId = window.requestAnimationFrame(loop);
+        // Type helper for the requestVideoFrameCallback API (not yet in lib.dom.d.ts everywhere)
+        type VideoWithRVFC = HTMLVideoElement & {
+            requestVideoFrameCallback: (cb: () => void) => number;
+            cancelVideoFrameCallback: (id: number) => void;
         };
 
-        const resizeObserver = new ResizeObserver(() => {
+        const video = videoRef.current;
+        const supportsRVFC = video != null && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+        let rvcId = 0;
+
+        const renderOnce = () => {
             resizeCanvas();
             renderFrame();
-        });
+        };
+
+        // When rVFC is supported, render exactly once per decoded video frame (perfectly
+        // GPU-synced, zero wasted work while paused or between frames).
+        const scheduleRVFC = () => {
+            if (!video) return;
+            rvcId = (video as VideoWithRVFC).requestVideoFrameCallback(() => {
+                renderOnce();
+                if (!video.paused) scheduleRVFC();
+            });
+        };
+
+        // Fallback: plain rAF loop (only runs while playing — see handlePlay/handlePause).
+        const fallbackLoop = () => {
+            renderOnce();
+            frameId = window.requestAnimationFrame(fallbackLoop);
+        };
+
+        const startLoop = () => {
+            if (supportsRVFC) {
+                scheduleRVFC();
+            } else {
+                window.cancelAnimationFrame(frameId);
+                frameId = window.requestAnimationFrame(fallbackLoop);
+            }
+        };
+
+        const stopLoop = () => {
+            if (supportsRVFC) {
+                (video as VideoWithRVFC).cancelVideoFrameCallback(rvcId);
+            } else {
+                window.cancelAnimationFrame(frameId);
+            }
+        };
+
+        const handlePlay = () => startLoop();
+        const handlePause = () => { stopLoop(); renderOnce(); };
+        // `seeking` fires immediately when currentTime changes (before decode completes),
+        // giving the overlay instant feedback during paused scrubbing.
+        // `seeked` fires when decode finishes for the final authoritative render.
+        const handleSeeking = () => { renderFrame(); };
+        const handleSeeked = () => { renderOnce(); };
+
+        const resizeObserver = new ResizeObserver(() => { renderOnce(); });
+
+        if (video) {
+            video.addEventListener('play', handlePlay);
+            video.addEventListener('pause', handlePause);
+            video.addEventListener('seeking', handleSeeking);
+            video.addEventListener('seeked', handleSeeked);
+        }
 
         resizeObserver.observe(container);
         resizeCanvas();
-        renderFrame();
-        frameId = window.requestAnimationFrame(loop);
+        renderOnce();
+
+        // If the video is already playing when this effect runs, kick off the loop.
+        if (video && !video.paused) {
+            startLoop();
+        }
 
         return () => {
-            resizeObserver.disconnect();
+            if (video) {
+                video.removeEventListener('play', handlePlay);
+                video.removeEventListener('pause', handlePause);
+                video.removeEventListener('seeking', handleSeeking);
+                video.removeEventListener('seeked', handleSeeked);
+                stopLoop();
+            }
             window.cancelAnimationFrame(frameId);
+            resizeObserver.disconnect();
         };
-    }, [containerRef, enabled, historyWindowSec, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
+    }, [containerRef, enabled, historyWindowSec, maxVelocityByTrack, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
 
     return <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full pointer-events-none ${className ?? ''}`.trim()} />;
 }
