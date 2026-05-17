@@ -10,6 +10,7 @@ interface KeyMomentTimelineProps {
     selectedKeyMomentId: string | null;
     accentClassName: string;
     onSelectKeyMoment: (keyMomentId: string) => void;
+    onDeselectKeyMoment: () => void;
     onChangeKeyMomentTime: (keyMomentId: string, time: number) => void;
 }
 
@@ -34,6 +35,7 @@ export function KeyMomentTimeline({
     selectedKeyMomentId,
     accentClassName,
     onSelectKeyMoment,
+    onDeselectKeyMoment,
     onChangeKeyMomentTime,
 }: KeyMomentTimelineProps) {
     const trackRef = useRef<HTMLDivElement>(null);
@@ -95,18 +97,27 @@ export function KeyMomentTimeline({
                         <button
                             key={entry.id}
                             type="button"
-                            onClick={() => onSelectKeyMoment(entry.id)}
+                            onClick={() => {
+                                if (isSelected) {
+                                    onDeselectKeyMoment();
+                                } else {
+                                    onSelectKeyMoment(entry.id);
+                                }
+                            }}
                             onPointerDown={(event) => {
                                 event.preventDefault();
                                 onSelectKeyMoment(entry.id);
                                 setDraggingKeyMomentId(entry.id);
                             }}
-                            className={`pointer-events-auto absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center border-2 shadow transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 ${accentClassName} ${isSelected ? 'scale-110 ring-2 ring-gray-900 ring-offset-2 dark:ring-white' : ''}`.trim()}
-                            style={{ left: `${percent}%` }}
+                            className={`pointer-events-auto absolute top-1/2 flex rounded-sm h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center border-2 shadow transition-transform hover:scale-110 focus:outline-none ${accentClassName} ${isSelected ? 'scale-110' : ''}`.trim()}
+                            style={{
+                                left: `${percent}%`,
+                                ...(isSelected ? { background: 'currentColor' } : {}),
+                            }}
                             aria-label={`Select key ${entry.index + 1}`}
                             title={`Key ${entry.index + 1}`}
                         >
-                            <span className="block h-1.5 w-1.5 -rotate-45 rounded-full bg-current" />
+                            <span className={`block h-1.5 w-1.5 -rotate-45 rounded-full ${isSelected ? 'bg-white/20' : 'bg-current'}`} />
                             <span className="sr-only">Key {entry.index + 1}</span>
                         </button>
                     );

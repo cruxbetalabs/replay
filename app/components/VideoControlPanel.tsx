@@ -1,5 +1,8 @@
 'use client';
 
+import { Trash2, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { VideoPlaybackSection } from './VideoPlaybackSection';
 import type { KeyMoment } from '../lib/key-moments';
 
@@ -24,6 +27,7 @@ interface VideoControlPanelProps {
     onCreateKeyMomentFromVideo2: () => void;
     onJumpToKeyMoment: (keyMomentId: string) => void;
     onSelectKeyMoment: (keyMomentId: string) => void;
+    onDeselectKeyMoment: () => void;
     onSetKeyMomentTime1: (keyMomentId: string, time: number) => void;
     onSetKeyMomentTime2: (keyMomentId: string, time: number) => void;
     onUpdateKeyMomentFromVideo1: (keyMomentId: string) => void;
@@ -55,6 +59,7 @@ export function VideoControlPanel({
     onCreateKeyMomentFromVideo2,
     onJumpToKeyMoment,
     onSelectKeyMoment,
+    onDeselectKeyMoment,
     onSetKeyMomentTime1,
     onSetKeyMomentTime2,
     onUpdateKeyMomentFromVideo1,
@@ -74,24 +79,51 @@ export function VideoControlPanel({
 
     return (
         <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">
-                Video Controls
-            </h2>
-            <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                    Video Controls
+                </h2>
                 {showRemoveVideos && (onRemoveVideo1 || onRemoveVideo2) && (
-                    <div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (hasVideo1) onRemoveVideo1?.();
-                                if (hasVideo2) onRemoveVideo2?.();
-                            }}
-                            className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm"
-                        >
-                            Remove Videos
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (hasVideo1) onRemoveVideo1?.();
+                            if (hasVideo2) onRemoveVideo2?.();
+                        }}
+                        className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        aria-label="Remove videos"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
                 )}
+            </div>
+            <div className="flex items-center justify-between mb-3">
+                <ButtonGroup>
+                    {hasVideo1 && (
+                        <Button type="button" variant="outline" size="sm" onClick={onCreateKeyMomentFromVideo1}>
+                            <Plus />
+                            Video 1
+                        </Button>
+                    )}
+                    {hasVideo2 && (
+                        <Button type="button" variant="outline" size="sm" onClick={onCreateKeyMomentFromVideo2}>
+                            <Plus />
+                            Video 2
+                        </Button>
+                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-red-500 hover:text-red-500 disabled:opacity-30"
+                        disabled={!selectedKeyMoment}
+                        onClick={() => selectedKeyMoment && onDeleteKeyMoment(selectedKeyMoment.id)}
+                    >
+                        <Trash2 />
+                    </Button>
+                </ButtonGroup>
+            </div>
+            <div className="space-y-4">
                 {hasVideo1 && (
                     <VideoPlaybackSection
                         label="Video 1"
@@ -105,17 +137,13 @@ export function VideoControlPanel({
                         selectedPosition={selectedPosition1}
                         accentClassName="text-gray-800 dark:text-gray-200"
                         timelineAccentClassName="bg-white border-blue-600 text-blue-700"
-                        addButtonClassName="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 font-medium text-blue-700 transition-colors hover:bg-blue-100"
-                        updateButtonClassName="font-medium text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-300"
                         sliderClassName="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700"
                         metaClassName="text-blue-700 dark:text-blue-300"
                         onSeek={onSeek1}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
+                        onDeselectKeyMoment={onDeselectKeyMoment}
                         onChangeKeyMomentTime={onSetKeyMomentTime1}
-                        onAddKeyMoment={onCreateKeyMomentFromVideo1}
-                        onUpdateSelectedKeyMoment={onUpdateKeyMomentFromVideo1}
-                        onDeleteSelectedKeyMoment={onDeleteKeyMoment}
                     />
                 )}
                 {hasVideo2 && (
@@ -131,17 +159,13 @@ export function VideoControlPanel({
                         selectedPosition={selectedPosition2}
                         accentClassName="text-gray-800 dark:text-gray-200"
                         timelineAccentClassName="bg-white border-green-600 text-green-700"
-                        addButtonClassName="rounded-md border border-green-200 bg-green-50 px-3 py-2 font-medium text-green-700 transition-colors hover:bg-green-100"
-                        updateButtonClassName="font-medium text-green-700 transition-colors hover:text-green-800 dark:text-green-300"
                         sliderClassName="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-600 hover:accent-green-700"
                         metaClassName="text-green-700 dark:text-green-300"
                         onSeek={onSeek2}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
+                        onDeselectKeyMoment={onDeselectKeyMoment}
                         onChangeKeyMomentTime={onSetKeyMomentTime2}
-                        onAddKeyMoment={onCreateKeyMomentFromVideo2}
-                        onUpdateSelectedKeyMoment={onUpdateKeyMomentFromVideo2}
-                        onDeleteSelectedKeyMoment={onDeleteKeyMoment}
                     />
                 )}
             </div>

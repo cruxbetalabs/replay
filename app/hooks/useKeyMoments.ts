@@ -265,6 +265,10 @@ export function useKeyMoments({
         },
     }), [activePlaybackSliderIndex, createKeyMomentFromVideo, hasVideoByIndex]);
 
+    const deselectKeyMoment = useCallback(() => {
+        setSelectedKeyMomentId(null);
+    }, []);
+
     return {
         activePlaybackSliderIndex,
         keyMoments,
@@ -274,6 +278,7 @@ export function useKeyMoments({
         updateKeyMomentFromVideo,
         jumpToKeyMoment,
         deleteKeyMoment,
+        deselectKeyMoment,
         setKeyMomentTime,
         keyMomentShortcuts,
         addKeyShortcut,

@@ -88,6 +88,7 @@ export function ReplayComparisonWorkspace({
         updateKeyMomentFromVideo,
         jumpToKeyMoment,
         deleteKeyMoment,
+        deselectKeyMoment,
         setKeyMomentTime,
         keyMomentShortcuts,
         addKeyShortcut,
@@ -219,6 +220,7 @@ export function ReplayComparisonWorkspace({
                 onCreateKeyMomentFromVideo2={() => createKeyMomentFromVideo(1)}
                 onJumpToKeyMoment={jumpToKeyMoment}
                 onSelectKeyMoment={jumpToKeyMoment}
+                onDeselectKeyMoment={deselectKeyMoment}
                 onSetKeyMomentTime1={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 0, time)}
                 onSetKeyMomentTime2={(keyMomentId, time) => setKeyMomentTime(keyMomentId, 1, time)}
                 onUpdateKeyMomentFromVideo1={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 0)}

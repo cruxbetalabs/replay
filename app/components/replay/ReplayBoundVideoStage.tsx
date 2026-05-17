@@ -7,6 +7,7 @@ import type { TrajectoryMetadata, VideoDimensions } from '../../lib/trajectory-t
 
 interface ReplayBoundVideoStageProps {
     label: string;
+    accentClassName?: string;
     videoUrl: string | null;
     videoRef: RefObject<HTMLVideoElement | null>;
     isCalculating?: boolean;
@@ -23,6 +24,7 @@ interface ReplayBoundVideoStageProps {
 
 export function ReplayBoundVideoStage({
     label,
+    accentClassName = 'bg-blue-500',
     videoUrl,
     videoRef,
     isCalculating = false,
@@ -107,6 +109,11 @@ export function ReplayBoundVideoStage({
 
                 <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-lg backdrop-blur-sm">
                     {label}
+                </div>
+
+                <div className="absolute bottom-4 left-4 z-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 backdrop-blur-md">
+                    <span className={`h-2.5 w-2.5 rounded-full ${accentClassName}`} />
+                    <span className="text-xs font-medium text-white/85">{label}</span>
                 </div>
 
                 {(trajectoryFileName || trajectoryError || trajectoryWarnings.length > 0) && (
