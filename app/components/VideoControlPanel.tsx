@@ -1,7 +1,7 @@
 'use client';
 
 import { VideoPlaybackSection } from './VideoPlaybackSection';
-import { formatVideoTime, type KeyMoment } from '../lib/key-moments';
+import { type KeyMoment } from '../lib/key-moments';
 
 interface VideoControlPanelProps {
     hasVideos: boolean;
@@ -66,7 +66,6 @@ export function VideoControlPanel({
 }: VideoControlPanelProps) {
     if (!hasVideos) return null;
 
-    const maxDuration = Math.max(duration1, duration2);
     const selectedKeyMoment = selectedKeyMomentId
         ? keyMoments.find((keyMoment) => keyMoment.id === selectedKeyMomentId) ?? null
         : null;
@@ -79,12 +78,6 @@ export function VideoControlPanel({
                 Video Controls
             </h2>
             <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Max Duration:</span>
-                    <span className="font-mono text-gray-800 dark:text-gray-200">
-                        {formatVideoTime(maxDuration)}
-                    </span>
-                </div>
                 {showRemoveVideos && (onRemoveVideo1 || onRemoveVideo2) && (
                     <div>
                         <button
