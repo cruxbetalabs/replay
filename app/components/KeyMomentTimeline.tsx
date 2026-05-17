@@ -40,6 +40,8 @@ export function KeyMomentTimeline({
 }: KeyMomentTimelineProps) {
     const trackRef = useRef<HTMLDivElement>(null);
     const [draggingKeyMomentId, setDraggingKeyMomentId] = useState<string | null>(null);
+    const wasPreviouslySelectedRef = useRef(false);
+    const hasDraggedRef = useRef(false);
 
     const visibleMoments = keyMoments
         .map((keyMoment, index) => ({
@@ -67,10 +69,14 @@ export function KeyMomentTimeline({
         };
 
         const handlePointerMove = (event: PointerEvent) => {
+            hasDraggedRef.current = true;
             updateTimeFromClientX(event.clientX);
         };
 
         const handlePointerUp = () => {
+            if (wasPreviouslySelectedRef.current && !hasDraggedRef.current) {
+                onDeselectKeyMoment();
+            }
             setDraggingKeyMomentId(null);
         };
 
@@ -81,7 +87,7 @@ export function KeyMomentTimeline({
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [draggingKeyMomentId, duration, onChangeKeyMomentTime]);
+    }, [draggingKeyMomentId, duration, onChangeKeyMomentTime, onDeselectKeyMoment]);
 
     return (
         <div className="space-y-1">
@@ -97,15 +103,10 @@ export function KeyMomentTimeline({
                         <button
                             key={entry.id}
                             type="button"
-                            onClick={() => {
-                                if (isSelected) {
-                                    onDeselectKeyMoment();
-                                } else {
-                                    onSelectKeyMoment(entry.id);
-                                }
-                            }}
                             onPointerDown={(event) => {
                                 event.preventDefault();
+                                wasPreviouslySelectedRef.current = isSelected;
+                                hasDraggedRef.current = false;
                                 onSelectKeyMoment(entry.id);
                                 setDraggingKeyMomentId(entry.id);
                             }}
