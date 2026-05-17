@@ -104,7 +104,7 @@ export function ReplayComparisonSidebar({
     onToggleTrajectoryTrack,
 }: ReplayComparisonSidebarProps) {
     return (
-        <div className="w-1/3 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
+        <div className="w-128 shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
             <div className="flex flex-col p-8 gap-6">
                 <VideoControlPanel
                     hasVideos={hasVideos}
