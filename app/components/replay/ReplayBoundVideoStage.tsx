@@ -64,6 +64,7 @@ export function ReplayBoundVideoStage({
                             className={`max-w-full max-h-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}
                             controls={false}
                             autoPlay={false}
+                            playsInline
                             preload="metadata"
                             aria-busy={isCalculating}
                             onLoadedMetadata={(event) => {

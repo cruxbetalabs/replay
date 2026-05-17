@@ -493,6 +493,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             className={`max-h-full max-w-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}
                             controls={false}
                             autoPlay={false}
+                            playsInline
                             preload="metadata"
                             aria-busy={isCalculating}
                             onLoadedData={() => {

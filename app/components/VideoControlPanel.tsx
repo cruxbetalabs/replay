@@ -1,7 +1,7 @@
 'use client';
 
 import { VideoPlaybackSection } from './VideoPlaybackSection';
-import { type KeyMoment } from '../lib/key-moments';
+import type { KeyMoment } from '../lib/key-moments';
 
 interface VideoControlPanelProps {
     hasVideos: boolean;

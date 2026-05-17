@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import type {
     PoseFrame,
@@ -234,6 +234,22 @@ export function TrajectoryOverlay({
 }: TrajectoryOverlayProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    // Keyed only on metadata so dependency changes like visibleTrackNames or
+    // historyWindowSec don't trigger a full O(n) rescan of every sample.
+    const maxVelocityByTrack = useMemo(() => {
+        const map = new Map<string, number>();
+        if (!metadata) return map;
+        for (const [trackName, track] of Object.entries(metadata.tracks)) {
+            let max = 0;
+            for (const sample of track.samples) {
+                const m = getVectorMagnitude(sample.velocityVector2DPerSecond);
+                if (m > max) max = m;
+            }
+            map.set(trackName, max);
+        }
+        return map;
+    }, [metadata]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
@@ -247,20 +263,6 @@ export function TrajectoryOverlay({
         }
 
         let frameId = 0;
-
-        // Pre-compute max velocity magnitude per track once per metadata load.
-        // Avoids an O(n) reduce across all samples on every rendered frame.
-        const maxVelocityByTrack = new Map<string, number>();
-        if (metadata) {
-            for (const [trackName, track] of Object.entries(metadata.tracks)) {
-                let max = 0;
-                for (const sample of track.samples) {
-                    const m = getVectorMagnitude(sample.velocityVector2DPerSecond);
-                    if (m > max) max = m;
-                }
-                maxVelocityByTrack.set(trackName, max);
-            }
-        }
 
         const resizeCanvas = () => {
             const rect = container.getBoundingClientRect();
@@ -477,7 +479,7 @@ export function TrajectoryOverlay({
 
         // Fallback: plain rAF loop (only runs while playing — see handlePlay/handlePause).
         const fallbackLoop = () => {
-            renderFrame();
+            renderOnce();
             frameId = window.requestAnimationFrame(fallbackLoop);
         };
 
@@ -500,7 +502,10 @@ export function TrajectoryOverlay({
 
         const handlePlay = () => startLoop();
         const handlePause = () => { stopLoop(); renderOnce(); };
-        // Render once per completed seek (covers scrubbing while paused).
+        // `seeking` fires immediately when currentTime changes (before decode completes),
+        // giving the overlay instant feedback during paused scrubbing.
+        // `seeked` fires when decode finishes for the final authoritative render.
+        const handleSeeking = () => { renderFrame(); };
         const handleSeeked = () => { renderOnce(); };
 
         const resizeObserver = new ResizeObserver(() => { renderOnce(); });
@@ -508,6 +513,7 @@ export function TrajectoryOverlay({
         if (video) {
             video.addEventListener('play', handlePlay);
             video.addEventListener('pause', handlePause);
+            video.addEventListener('seeking', handleSeeking);
             video.addEventListener('seeked', handleSeeked);
         }
 
@@ -524,13 +530,14 @@ export function TrajectoryOverlay({
             if (video) {
                 video.removeEventListener('play', handlePlay);
                 video.removeEventListener('pause', handlePause);
+                video.removeEventListener('seeking', handleSeeking);
                 video.removeEventListener('seeked', handleSeeked);
                 stopLoop();
             }
             window.cancelAnimationFrame(frameId);
             resizeObserver.disconnect();
         };
-    }, [containerRef, enabled, historyWindowSec, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
+    }, [containerRef, enabled, historyWindowSec, maxVelocityByTrack, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
 
     return <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full pointer-events-none ${className ?? ''}`.trim()} />;
 }
