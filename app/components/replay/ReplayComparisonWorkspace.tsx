@@ -38,6 +38,7 @@ interface ReplayComparisonWorkspaceProps {
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
+    onRemoveMetadata?: () => void;
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
 }
 
@@ -54,6 +55,7 @@ export function ReplayComparisonWorkspace({
     showRemoveVideos = true,
     onRemoveVideo1,
     onRemoveVideo2,
+    onRemoveMetadata,
     onKeyMomentsChange,
 }: ReplayComparisonWorkspaceProps) {
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
@@ -242,6 +244,7 @@ export function ReplayComparisonWorkspace({
                 onShowAllTracks={showAllTrajectoryTracks}
                 onHideAllTracks={hideAllTrajectoryTracks}
                 onToggleTrajectoryTrack={toggleTrajectoryTrack}
+                onRemoveMetadata={onRemoveMetadata}
             />
         </div>
     );

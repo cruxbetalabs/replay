@@ -447,8 +447,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 <FormatChip icon={<FileVideo className="h-3 w-3" />} label="MOV" />
                                 <FormatChip
                                     icon={<FileJson2 className="h-3 w-3" />}
-                                    label="JSON — Metadata"
-                                    onClick={() => jsonInputRef.current?.click()}
+                                    label="JSON (Metadata)"
+
                                 />
                             </div>
                         </div>

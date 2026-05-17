@@ -63,6 +63,7 @@ interface OverlaySettingsPanelProps {
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
+    onRemoveMetadata?: () => void;
 }
 
 export function OverlaySettingsPanel({
@@ -80,6 +81,7 @@ export function OverlaySettingsPanel({
     onShowAllTracks,
     onHideAllTracks,
     onToggleTrajectoryTrack,
+    onRemoveMetadata,
 }: OverlaySettingsPanelProps) {
     const visibleTrackNameSet = useMemo(() => new Set(visibleTrajectoryTrackNames), [visibleTrajectoryTrackNames]);
     const availableTrackNameSet = useMemo(() => new Set(availableTrajectoryTrackNames), [availableTrajectoryTrackNames]);
@@ -96,6 +98,18 @@ export function OverlaySettingsPanel({
             </h2>
 
             <div className="space-y-4">
+
+                {onRemoveMetadata && (
+                    <div>
+                        <button
+                            type="button"
+                            onClick={onRemoveMetadata}
+                            className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm"
+                        >
+                            Remove Metadata
+                        </button>
+                    </div>
+                )}
 
                 <div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">

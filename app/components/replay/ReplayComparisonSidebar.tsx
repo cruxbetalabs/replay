@@ -54,6 +54,7 @@ interface ReplayComparisonSidebarProps {
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
+    onRemoveMetadata?: () => void;
 }
 
 export function ReplayComparisonSidebar({
@@ -102,6 +103,7 @@ export function ReplayComparisonSidebar({
     onShowAllTracks,
     onHideAllTracks,
     onToggleTrajectoryTrack,
+    onRemoveMetadata,
 }: ReplayComparisonSidebarProps) {
     return (
         <div className="w-128 shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
@@ -157,6 +159,7 @@ export function ReplayComparisonSidebar({
                     onShowAllTracks={onShowAllTracks}
                     onHideAllTracks={onHideAllTracks}
                     onToggleTrajectoryTrack={onToggleTrajectoryTrack}
+                    onRemoveMetadata={onRemoveMetadata}
                 />}
             </div>
         </div>

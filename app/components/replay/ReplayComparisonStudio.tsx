@@ -58,6 +58,11 @@ export function ReplayComparisonStudio({
         removeVideo(1);
     }, [clearVideoDimensions, removeVideo]);
 
+    const handleRemoveAllMetadata = useCallback(() => {
+        clearTrajectory(0);
+        clearTrajectory(1);
+    }, [clearTrajectory]);
+
     const splitViewContent = useCallback(({
         calculatingByIndex,
         trajectoryHistoryWindowSec,
@@ -131,6 +136,7 @@ export function ReplayComparisonStudio({
             showRemoveVideos
             onRemoveVideo1={handleRemoveVideo1}
             onRemoveVideo2={handleRemoveVideo2}
+            onRemoveMetadata={handleRemoveAllMetadata}
             onKeyMomentsChange={onKeyMomentsChange}
         />
     );

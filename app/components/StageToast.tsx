@@ -69,6 +69,15 @@ export function StageToast({ results, onClose }: StageToastProps) {
                     </div>
                 ))}
             </div>
+            {/* Drain bar — mirrors the auto-dismiss timer visually */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 overflow-hidden rounded-b-xl">
+                <div
+                    className="h-full origin-left bg-white/25"
+                    style={{
+                        animation: `toast-drain ${AUTO_DISMISS_MS}ms linear forwards`,
+                    }}
+                />
+            </div>
         </div>
     );
 }
