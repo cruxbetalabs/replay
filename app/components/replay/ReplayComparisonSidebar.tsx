@@ -3,6 +3,7 @@
 import { OverlaySettingsPanel } from '../OverlaySettingsPanel';
 import { SwipeStatsPanel } from '../SwipeStatsPanel';
 import { VideoControlPanel } from '../VideoControlPanel';
+import { OnboardingContent } from './OnboardingContent';
 import type { KeyMoment } from '../../lib/key-moments';
 
 interface ReplayComparisonSidebarProps {
@@ -108,8 +109,9 @@ export function ReplayComparisonSidebar({
     onRemoveMetadata,
 }: ReplayComparisonSidebarProps) {
     return (
-        <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l-4 border-gray-300 dark:border-gray-700">
-            <div className="flex flex-col p-8 gap-6">
+        <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col">
+                {!hasVideos && <OnboardingContent />}
                 <VideoControlPanel
                     hasVideos={hasVideos}
                     hasVideo1={hasVideo1}
@@ -140,6 +142,7 @@ export function ReplayComparisonSidebar({
                     showRemoveVideos={showRemoveVideos}
                     onRemoveVideo1={onRemoveVideo1}
                     onRemoveVideo2={onRemoveVideo2}
+                    onRemoveMetadata={onRemoveMetadata}
                 />
 
                 {/* <SwipeStatsPanel

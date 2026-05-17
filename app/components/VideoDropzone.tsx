@@ -6,6 +6,7 @@ import { TrajectoryOverlay } from './TrajectoryOverlay';
 import { StageToast, type ProcessResult } from './StageToast';
 import { StageReplaceConfirm } from './StageReplaceConfirm';
 import type { TrajectoryMetadata, VideoDimensions } from '../lib/trajectory-types';
+import { useIKDrag } from '../hooks/useIKDrag';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
@@ -141,6 +142,22 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         const hasTrajectory = !!trajectoryMetadata;
         const hasRenderableTrajectory = hasTrajectory && canRenderTrajectory;
         const showTrajectoryBackground = hasTrajectory && !videoUrl;
+
+        const [maskOpacity, setMaskOpacity] = useState(0.10);
+
+        const {
+            overrides,
+            cursor,
+            hasOverrides,
+            onPointerDown,
+            onPointerMove,
+            onPointerUp,
+            onPointerLeave,
+            resetIK,
+        } = useIKDrag(
+            [{ metadata: trajectoryMetadata, videoRef: resolvedVideoRef, canRender: canRenderTrajectory }],
+            showPose,
+        );
 
         // ── Drop processing state ────────────────────────────────────────────
         const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -477,6 +494,11 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                     <div
                         ref={stageRef}
                         className="relative flex h-full w-full items-center justify-center bg-black"
+                        style={{ cursor, touchAction: 'none' }}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerLeave={onPointerLeave}
                     >
                         {isCalculating && (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90">
@@ -491,6 +513,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             ref={ref}
                             src={videoUrl}
                             className={`max-h-full max-w-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
                             controls={false}
                             autoPlay={false}
                             playsInline
@@ -529,6 +552,13 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             }}
                         />
 
+                        {showPose && hasRenderableTrajectory && (
+                            <div
+                                className="pointer-events-none absolute inset-0"
+                                style={{ backgroundColor: `rgba(0,0,0,${maskOpacity})` }}
+                            />
+                        )}
+
                         <TrajectoryOverlay
                             containerRef={stageRef}
                             videoRef={resolvedVideoRef}
@@ -538,7 +568,34 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             historyWindowSec={trajectoryHistoryWindowSec}
                             visibleTrackNames={visibleTrajectoryTrackNames}
                             showPose={showPose}
+                            landmarkOverrides={overrides[0]}
                         />
+
+                        {showPose && hasRenderableTrajectory && (
+                            <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2">
+                                <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
+                                    <span className="whitespace-nowrap text-xs font-medium text-white/70">overlay mask</span>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round(maskOpacity * 100)}
+                                        onChange={(e) => setMaskOpacity(Number(e.target.value) / 100)}
+                                        className="w-20 cursor-pointer"
+                                        style={{ accentColor: 'rgba(255,255,255,0.75)' }}
+                                    />
+                                </div>
+                                {hasOverrides && (
+                                    <button
+                                        type="button"
+                                        onClick={resetIK}
+                                        className="cursor-pointer rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 shadow-lg backdrop-blur-sm transition-colors hover:bg-white/15 hover:text-white"
+                                    >
+                                        Reset pose
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         {renderOverlays()}
                     </div>

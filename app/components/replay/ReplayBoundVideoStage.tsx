@@ -1,9 +1,10 @@
 'use client';
 
 import type { RefObject } from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { TrajectoryOverlay } from '../TrajectoryOverlay';
 import type { TrajectoryMetadata, VideoDimensions } from '../../lib/trajectory-types';
+import { useIKDrag } from '../../hooks/useIKDrag';
 
 interface ReplayBoundVideoStageProps {
     label: string;
@@ -39,16 +40,36 @@ export function ReplayBoundVideoStage({
     onVideoMetadataLoad,
 }: ReplayBoundVideoStageProps) {
     const stageRef = useRef<HTMLDivElement>(null);
+    const [maskOpacity, setMaskOpacity] = useState(0.10);
     const hasTrajectory = Boolean(trajectoryMetadata);
     const hasRenderableTrajectory = hasTrajectory && canRenderTrajectory;
     const showTrajectoryBackground = hasTrajectory && !videoUrl;
     const statusText = trajectoryError ?? trajectoryWarnings[0] ?? trajectoryFileName ?? 'Host-provided source';
+
+    const {
+        overrides,
+        cursor,
+        hasOverrides,
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+        onPointerLeave,
+        resetIK,
+    } = useIKDrag(
+        [{ metadata: trajectoryMetadata, videoRef, canRender: canRenderTrajectory }],
+        showPose,
+    );
 
     return (
         <div className="flex-1 h-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <div
                 ref={stageRef}
                 className="relative flex h-full w-full items-center justify-center bg-black"
+                style={{ cursor, touchAction: 'none' }}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerLeave={onPointerLeave}
             >
                 {videoUrl ? (
                     <>
@@ -64,6 +85,7 @@ export function ReplayBoundVideoStage({
                             ref={videoRef}
                             src={videoUrl}
                             className={`max-w-full max-h-full object-contain transition-opacity duration-150 ${isCalculating ? 'opacity-0' : 'opacity-100'}`}
+                            style={{ pointerEvents: 'none' }}
                             controls={false}
                             autoPlay={false}
                             playsInline
@@ -96,6 +118,13 @@ export function ReplayBoundVideoStage({
                     </div>
                 )}
 
+                {showPose && hasRenderableTrajectory && (
+                    <div
+                        className="pointer-events-none absolute inset-0"
+                        style={{ backgroundColor: `rgba(0,0,0,${maskOpacity})` }}
+                    />
+                )}
+
                 <TrajectoryOverlay
                     containerRef={stageRef}
                     videoRef={videoRef}
@@ -105,10 +134,38 @@ export function ReplayBoundVideoStage({
                     historyWindowSec={trajectoryHistoryWindowSec}
                     visibleTrackNames={visibleTrajectoryTrackNames}
                     showPose={showPose}
+                    landmarkOverrides={overrides[0]}
                 />
 
-                <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-lg backdrop-blur-sm">
-                    {label}
+                <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2">
+                    <div className="flex items-center gap-2">
+                        <div className="rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-white shadow-lg backdrop-blur-sm">
+                            {label}
+                        </div>
+                        {showPose && hasOverrides && (
+                            <button
+                                type="button"
+                                onClick={resetIK}
+                                className="cursor-pointer rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 shadow-lg backdrop-blur-sm transition-colors hover:bg-white/15 hover:text-white"
+                            >
+                                Reset pose
+                            </button>
+                        )}
+                    </div>
+                    {showPose && hasRenderableTrajectory && (
+                        <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
+                            <span className="whitespace-nowrap text-xs font-medium text-white/70">overlay mask</span>
+                            <input
+                                type="range"
+                                min={0}
+                                max={100}
+                                value={Math.round(maskOpacity * 100)}
+                                onChange={(e) => setMaskOpacity(Number(e.target.value) / 100)}
+                                className="w-20 cursor-pointer"
+                                style={{ accentColor: 'rgba(255,255,255,0.75)' }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="absolute bottom-4 left-4 z-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 backdrop-blur-md">

@@ -1,9 +1,10 @@
 'use client';
 
-import { Trash2, Plus } from 'lucide-react';
+import { RotateCcwIcon, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { VideoPlaybackSection } from './VideoPlaybackSection';
+import { SidebarPanel } from './SidebarPanel';
 import type { KeyMoment } from '../lib/key-moments';
 
 interface VideoControlPanelProps {
@@ -36,6 +37,7 @@ interface VideoControlPanelProps {
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
+    onRemoveMetadata?: () => void;
 }
 
 export function VideoControlPanel({
@@ -68,6 +70,7 @@ export function VideoControlPanel({
     showRemoveVideos = true,
     onRemoveVideo1,
     onRemoveVideo2,
+    onRemoveMetadata,
 }: VideoControlPanelProps) {
     if (!hasVideos) return null;
 
@@ -78,25 +81,25 @@ export function VideoControlPanel({
     const selectedPosition2 = selectedKeyMoment?.positions[1] ?? null;
 
     return (
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                    Video Controls
-                </h2>
-                {showRemoveVideos && (onRemoveVideo1 || onRemoveVideo2) && (
+        <SidebarPanel
+            title="Video Controls"
+            action={
+                showRemoveVideos && (onRemoveVideo1 || onRemoveVideo2) ? (
                     <button
                         type="button"
                         onClick={() => {
                             if (hasVideo1) onRemoveVideo1?.();
                             if (hasVideo2) onRemoveVideo2?.();
+                            onRemoveMetadata?.();
                         }}
                         className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         aria-label="Remove videos"
                     >
-                        <Trash2 className="h-4 w-4" />
+                        <RotateCcwIcon className="h-4 w-4" />
                     </button>
-                )}
-            </div>
+                ) : undefined
+            }
+        >
             <div className="flex items-center justify-between mb-3">
                 <ButtonGroup>
                     {hasVideo1 && (
@@ -169,6 +172,6 @@ export function VideoControlPanel({
                     />
                 )}
             </div>
-        </div>
+        </SidebarPanel>
     );
 }

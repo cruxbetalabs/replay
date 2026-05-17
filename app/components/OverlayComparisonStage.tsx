@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
+import { useIKDrag } from '../hooks/useIKDrag';
 
 interface OverlayComparisonStageProps {
     videoRef1: RefObject<HTMLVideoElement | null>;
@@ -44,7 +45,27 @@ export function OverlayComparisonStage({
     showPose,
 }: OverlayComparisonStageProps) {
     const stageRef = useRef<HTMLDivElement>(null);
+    const [maskOpacity, setMaskOpacity] = useState(0.10);
     const hasRenderableOverlay = (metadata1 && canRender1) || (metadata2 && canRender2);
+
+    const {
+        overrides,
+        cursor,
+        hasOverrides,
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+        onPointerLeave,
+        resetIK,
+    } = useIKDrag(
+        [
+            { metadata: metadata1, videoRef: videoRef1, canRender: canRender1 },
+            { metadata: metadata2, videoRef: videoRef2, canRender: canRender2 },
+        ],
+        showPose,
+    );
+
+
 
     return (
         <div className="relative h-full overflow-hidden rounded-lg border-4 border-gray-300 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.16),_transparent_40%),linear-gradient(180deg,_#020617_0%,_#111827_100%)] dark:border-gray-700">
@@ -60,12 +81,52 @@ export function OverlayComparisonStage({
                         </div>
                     ))}
                 </div>
+
+                {showPose && hasOverrides && (
+                    <button
+                        type="button"
+                        onClick={resetIK}
+                        className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+                    >
+                        Reset pose
+                    </button>
+                )}
+
+                {showPose && hasRenderableOverlay && (
+                    <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
+                        <span className="whitespace-nowrap text-xs font-medium text-white/70">overlay mask</span>
+                        <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={Math.round(maskOpacity * 100)}
+                            onChange={(e) => setMaskOpacity(Number(e.target.value) / 100)}
+                            className="w-20 cursor-pointer"
+                            style={{ accentColor: 'rgba(255,255,255,0.75)' }}
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="relative h-full w-full pt-20">
                 <div className="absolute inset-0" />
 
-                <div ref={stageRef} className="relative h-full w-full">
+                <div
+                    ref={stageRef}
+                    className="relative h-full w-full"
+                    style={{ cursor, touchAction: 'none' }}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerLeave={onPointerLeave}
+                >
+                    {showPose && hasRenderableOverlay && (
+                        <div
+                            className="pointer-events-none absolute inset-0"
+                            style={{ backgroundColor: `rgba(0,0,0,${maskOpacity})` }}
+                        />
+                    )}
+
                     <TrajectoryOverlay
                         containerRef={stageRef}
                         videoRef={videoRef1}
@@ -76,6 +137,7 @@ export function OverlayComparisonStage({
                         visibleTrackNames={visibleTrajectoryTrackNames}
                         showPose={showPose}
                         poseColor={{ r: 59, g: 130, b: 246 }}
+                        landmarkOverrides={overrides[0]}
                         className="absolute inset-0"
                     />
                     <TrajectoryOverlay
@@ -88,6 +150,7 @@ export function OverlayComparisonStage({
                         visibleTrackNames={visibleTrajectoryTrackNames}
                         showPose={showPose}
                         poseColor={{ r: 16, g: 185, b: 129 }}
+                        landmarkOverrides={overrides[1]}
                         className="absolute inset-0"
                     />
                 </div>

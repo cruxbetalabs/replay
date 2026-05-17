@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { RotateCcwIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { SidebarPanel } from './SidebarPanel';
 
 const BODY_TRACK_LAYOUT = [
     {
@@ -93,12 +94,11 @@ export function OverlaySettingsPanel({
     const allTracksVisible = availableTrajectoryTrackNames.length > 0 && hiddenTrajectoryTrackNames.length === 0;
 
     return (
-        <div className="flex-1 rounded-lg bg-white p-6 shadow-lg dark:bg-gray-900 space-y-3">
-            <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                    Overlay Settings
-                </h2>
-                {onRemoveMetadata && (
+        <SidebarPanel
+            title="Overlay Settings"
+            className="flex-1 space-y-3"
+            action={
+                onRemoveMetadata ? (
                     <button
                         type="button"
                         onClick={onRemoveMetadata}
@@ -107,8 +107,9 @@ export function OverlaySettingsPanel({
                     >
                         <RotateCcwIcon className="h-4 w-4" />
                     </button>
-                )}
-            </div>
+                ) : undefined
+            }
+        >
 
             <div className="space-y-4">
 
@@ -269,6 +270,6 @@ export function OverlaySettingsPanel({
                     </div>
                 )}
             </div>}
-        </div>
+        </SidebarPanel>
     );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
+import type { Pos2D } from '../lib/pose-ik';
 import type {
     PoseFrame,
     PoseLandmark,
@@ -21,6 +22,8 @@ interface TrajectoryOverlayProps {
     visibleTrackNames?: string[];
     showPose?: boolean;
     poseColor?: RgbColor;
+    /** Per-landmark position overrides produced by IK dragging. */
+    landmarkOverrides?: Map<number, Pos2D> | null;
     className?: string;
 }
 
@@ -230,9 +233,19 @@ export function TrajectoryOverlay({
     visibleTrackNames = [],
     showPose = true,
     poseColor = DEFAULT_POSE_COLOR,
+    landmarkOverrides = null,
     className,
 }: TrajectoryOverlayProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Keep a ref so the render-loop closure can always read the latest overrides
+    // without needing to be restarted when they change.
+    const landmarkOverridesRef = useRef<Map<number, Pos2D> | null>(null);
+    landmarkOverridesRef.current = landmarkOverrides;
+
+    // A ref to `renderOnce` so the override-change effect can trigger a repaint
+    // without adding `landmarkOverrides` to the main effect's dep array.
+    const renderOnceRef = useRef<(() => void) | null>(null);
 
     // Keyed only on metadata so dependency changes like visibleTrackNames or
     // historyWindowSec don't trigger a full O(n) rescan of every sample.
@@ -261,6 +274,12 @@ export function TrajectoryOverlay({
         if (!context) {
             return undefined;
         }
+
+        // Helper: return the effective (x, y) for a landmark, merging overrides.
+        const getPos = (landmark: PoseLandmark, index: number): Pos2D => {
+            const ov = landmarkOverridesRef.current?.get(index);
+            return ov ?? landmark;
+        };
 
         let frameId = 0;
 
@@ -422,29 +441,35 @@ export function TrajectoryOverlay({
                     return;
                 }
 
+                const startPos = getPos(startLandmark, startIndex);
+                const endPos = getPos(endLandmark, endIndex);
+
                 context.beginPath();
                 context.moveTo(
-                    videoRect.x + (startLandmark.x * poseScaleX),
-                    videoRect.y + (startLandmark.y * poseScaleY),
+                    videoRect.x + (startPos.x * poseScaleX),
+                    videoRect.y + (startPos.y * poseScaleY),
                 );
                 context.lineTo(
-                    videoRect.x + (endLandmark.x * poseScaleX),
-                    videoRect.y + (endLandmark.y * poseScaleY),
+                    videoRect.x + (endPos.x * poseScaleX),
+                    videoRect.y + (endPos.y * poseScaleY),
                 );
                 context.stroke();
             });
 
             context.fillStyle = `rgba(${poseColor.r}, ${poseColor.g}, ${poseColor.b}, 0.95)`;
-            poseFrame.landmarks.forEach((landmark) => {
+            poseFrame.landmarks.forEach((landmark, landmarkIndex) => {
                 if (!shouldDrawPoseLandmark(landmark)) {
                     return;
                 }
 
+                const pos = getPos(landmark, landmarkIndex);
+                const isOverridden = landmarkOverridesRef.current?.has(landmarkIndex) ?? false;
+
                 context.beginPath();
                 context.arc(
-                    videoRect.x + (landmark.x * poseScaleX),
-                    videoRect.y + (landmark.y * poseScaleY),
-                    POSE_LANDMARK_RADIUS_PX,
+                    videoRect.x + (pos.x * poseScaleX),
+                    videoRect.y + (pos.y * poseScaleY),
+                    isOverridden ? POSE_LANDMARK_RADIUS_PX + 2 : POSE_LANDMARK_RADIUS_PX,
                     0,
                     Math.PI * 2,
                 );
@@ -466,6 +491,8 @@ export function TrajectoryOverlay({
             resizeCanvas();
             renderFrame();
         };
+
+        renderOnceRef.current = renderOnce;
 
         // When rVFC is supported, render exactly once per decoded video frame (perfectly
         // GPU-synced, zero wasted work while paused or between frames).
@@ -536,8 +563,15 @@ export function TrajectoryOverlay({
             }
             window.cancelAnimationFrame(frameId);
             resizeObserver.disconnect();
+            renderOnceRef.current = null;
         };
     }, [containerRef, enabled, historyWindowSec, maxVelocityByTrack, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
+
+    // When overrides change (IK drag updates), force a repaint without
+    // restarting the main render loop.
+    useEffect(() => {
+        renderOnceRef.current?.();
+    }, [landmarkOverrides]);
 
     return <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full pointer-events-none ${className ?? ''}`.trim()} />;
 }
