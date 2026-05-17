@@ -12,7 +12,7 @@ export function SidebarPanel({ title, action, children, className }: SidebarPane
     return (
         <div className={cn('bg-white px-6 pt-5 pb-7 dark:bg-gray-900 border-b', className)}>
             <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">{title}</h2>
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">{title}</h2>
                 {action}
             </div>
             {children}

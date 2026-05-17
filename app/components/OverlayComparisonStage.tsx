@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { RefObject } from 'react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
@@ -45,7 +45,6 @@ export function OverlayComparisonStage({
     showPose,
 }: OverlayComparisonStageProps) {
     const stageRef = useRef<HTMLDivElement>(null);
-    const [maskOpacity, setMaskOpacity] = useState(0.10);
     const hasRenderableOverlay = (metadata1 && canRender1) || (metadata2 && canRender2);
 
     const {
@@ -91,21 +90,6 @@ export function OverlayComparisonStage({
                         Reset pose
                     </button>
                 )}
-
-                {showPose && hasRenderableOverlay && (
-                    <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
-                        <span className="whitespace-nowrap text-xs font-medium text-white/70">overlay mask</span>
-                        <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={Math.round(maskOpacity * 100)}
-                            onChange={(e) => setMaskOpacity(Number(e.target.value) / 100)}
-                            className="w-20 cursor-pointer"
-                            style={{ accentColor: 'rgba(255,255,255,0.75)' }}
-                        />
-                    </div>
-                )}
             </div>
 
             <div className="relative h-full w-full pt-20">
@@ -120,13 +104,6 @@ export function OverlayComparisonStage({
                     onPointerUp={onPointerUp}
                     onPointerLeave={onPointerLeave}
                 >
-                    {showPose && hasRenderableOverlay && (
-                        <div
-                            className="pointer-events-none absolute inset-0"
-                            style={{ backgroundColor: `rgba(0,0,0,${maskOpacity})` }}
-                        />
-                    )}
-
                     <TrajectoryOverlay
                         containerRef={stageRef}
                         videoRef={videoRef1}
