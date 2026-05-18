@@ -199,7 +199,7 @@ export function ReplayComparisonWorkspace({
     return (
         <div className="flex h-full w-full min-h-0 overflow-hidden bg-zinc-50 font-sans dark:bg-black">
             <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-            <div className="flex-1 min-w-0 h-full flex flex-col p-8 gap-6 bg-white dark:bg-black">
+            <div className="flex-1 min-w-0 h-full flex flex-col p-5 gap-6 bg-white dark:bg-black">
                 <Tabs
                     value={resolvedViewMode}
                     onValueChange={(value) => handleSetViewMode(value as 'split' | 'overlay')}
