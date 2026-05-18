@@ -50,10 +50,12 @@ export function ReplayBoundVideoStage({
         overrides,
         cursor,
         hasOverrides,
+        pinnedJoints,
         onPointerDown,
         onPointerMove,
         onPointerUp,
         onPointerLeave,
+        onDoubleClick,
         resetIK,
     } = useIKDrag(
         [{ metadata: trajectoryMetadata, videoRef, canRender: canRenderTrajectory }],
@@ -70,6 +72,7 @@ export function ReplayBoundVideoStage({
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerLeave={onPointerLeave}
+                onDoubleClick={onDoubleClick}
             >
                 {videoUrl ? (
                     <>
@@ -135,6 +138,7 @@ export function ReplayBoundVideoStage({
                     visibleTrackNames={visibleTrajectoryTrackNames}
                     showPose={showPose}
                     landmarkOverrides={overrides[0]}
+                    pinnedJoints={pinnedJoints[0]}
                 />
 
                 <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2">

@@ -5,14 +5,17 @@ import type { RefObject } from 'react';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
 import {
     buildAdjacencyMap,
+    canonicalBoneKey,
+    computeCanonicalBoneLengths,
     computeDistToNearestAnchor,
     cssPixelsToPoseUnits,
     cssToPoseCoords,
+    DEFAULT_IK_ANCHOR_JOINTS,
     findAnchorLandmarks,
     findChainToAnchor,
     findLastPoseFrameAtOrBefore,
     getLandmarkGroup,
-    HIP_TO_ANKLE_ANCHOR,
+    HIP_SIBLINGS,
     hitTestLandmark,
     isDraggable,
     SHOULDER_SIBLINGS,
@@ -32,9 +35,15 @@ export interface IKDragSource {
 
 type IKMeta = {
     adjacencyMap: Map<number, number[]>;
+    /** Structural anchors (hips) — used as fallback when no ankles found. */
     anchors: Set<number>;
-    /** Minimum hop count from each joint to the nearest anchor (multi-source BFS). */
+    /**
+     * Minimum hop count from each joint to the nearest default IK anchor
+     * (ankle joints).  Determines "downstream" direction for branch propagation.
+     */
     distToAnchor: Map<number, number>;
+    /** Median 3D bone length per connection, keyed by `canonicalBoneKey`. */
+    canonicalBoneLengths: Map<string, number>;
 };
 
 type DragState = {
@@ -47,6 +56,12 @@ type DragState = {
      * length reference in FABRIK so lengths never drift across drag gestures.
      */
     rawPositions: Map<number, Pos2D>;
+    /**
+     * 2D bone lengths measured from initialPositions at drag-start, one per
+     * consecutive pair in `chain`. Using these avoids snapping the skeleton to
+     * 3D-estimated lengths that differ from the visible 2D projection.
+     */
+    chainBoneLengths: number[];
     group: readonly number[] | null;
     representativeIndex: number;
     /** Offset from the IK representative to the actually-grabbed landmark. */
@@ -58,11 +73,16 @@ export interface IKDragResult {
     overrides: ReadonlyArray<Map<number, Pos2D> | null>;
     cursor: string;
     hasOverrides: boolean;
+    /** Pinned joint indices per source. Pinned joints act as extra IK anchors. */
+    pinnedJoints: ReadonlyArray<ReadonlySet<number>>;
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
     onPointerUp: () => void;
     onPointerLeave: () => void;
+    /** Double-click on a landmark to toggle it as a pinned anchor. */
+    onDoubleClick: (e: React.MouseEvent<HTMLDivElement>) => void;
     resetIK: () => void;
+    clearPins: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +107,9 @@ export function useIKDrag(
         () => Array.from({ length: sources.length }, () => null),
     );
     const [cursor, setCursor] = useState<string>('default');
+    const [pinnedJoints, setPinnedJoints] = useState<Array<Set<number>>>(
+        () => Array.from({ length: sources.length }, () => new Set<number>()),
+    );
 
     // ── Stable refs (all mutable values read inside pointer callbacks) ────────
 
@@ -98,6 +121,9 @@ export function useIKDrag(
 
     const showPoseRef = useRef(showPose);
     showPoseRef.current = showPose;
+
+    const pinnedJointsRef = useRef(pinnedJoints);
+    pinnedJointsRef.current = pinnedJoints;
 
     // ── Per-source ikMeta — ref-based manual memoization ─────────────────────
     // Recomputes adjacency map + anchors only when a source's metadata changes,
@@ -117,8 +143,20 @@ export function useIKDrag(
                 ? (() => {
                     const adjacencyMap = buildAdjacencyMap(source.metadata.pose.skeletonConnections);
                     const anchors = findAnchorLandmarks(source.metadata.pose.skeletonConnections);
-                    const distToAnchor = computeDistToNearestAnchor(adjacencyMap, anchors);
-                    return { adjacencyMap, anchors, distToAnchor };
+                    // Use ankle joints as BFS roots so distToAnchor describes
+                    // "distance from feet" — joints closer to hands/head are
+                    // strictly "downstream" and branch propagation flows correctly.
+                    // Fall back to structural anchors (hips) if ankles aren't in the graph.
+                    const ikAnchors = (adjacencyMap.has(27) && adjacencyMap.has(28))
+                        ? DEFAULT_IK_ANCHOR_JOINTS
+                        : anchors;
+                    const distToAnchor = computeDistToNearestAnchor(adjacencyMap, ikAnchors);
+                    const canonicalBoneLengths = computeCanonicalBoneLengths(
+                        source.metadata.pose.frames,
+                        source.metadata.pose.skeletonConnections,
+                        source.metadata.pose.coordinateSpace.width,
+                    );
+                    return { adjacencyMap, anchors, distToAnchor, canonicalBoneLengths };
                 })()
                 : null;
         }
@@ -214,14 +252,17 @@ export function useIKDrag(
             const group = getLandmarkGroup(bestLandmarkIndex);
             const representativeIndex = group ? group[0] : bestLandmarkIndex;
 
-            // Hips are normally IK anchors, so findChainToAnchor would return a
-            // chain of length 1 and the hip would teleport freely.  Override:
-            // use the ankle of the same leg as the anchor so the drag is
-            // constrained by the hip → knee → ankle chain (foot stays planted).
-            const ankleAnchor = HIP_TO_ANKLE_ANCHOR.get(representativeIndex);
-            const effectiveAnchors = ankleAnchor != null
-                ? new Set([ankleAnchor])
-                : ikMeta.anchors;
+            // Build effective anchors: start from DEFAULT_IK_ANCHOR_JOINTS (ankles)
+            // plus any user-pinned joints, then remove the dragged joint so it can move.
+            const userPins = pinnedJointsRef.current[bestSourceIndex] ?? new Set<number>();
+            let effectiveAnchors = new Set([...DEFAULT_IK_ANCHOR_JOINTS, ...userPins]);
+            if (effectiveAnchors.has(representativeIndex)) {
+                effectiveAnchors = new Set([...effectiveAnchors].filter(a => a !== representativeIndex));
+                // Nothing left → fall back to structural anchors (hips).
+                if (effectiveAnchors.size === 0) {
+                    effectiveAnchors = ikMeta.anchors;
+                }
+            }
 
             const chain = findChainToAnchor(ikMeta.adjacencyMap, representativeIndex, effectiveAnchors);
             if (!chain) return;
@@ -239,11 +280,7 @@ export function useIKDrag(
             const initialZ = new Map<number, number | null>();
             frame.landmarks.forEach((lm, i) => {
                 if (!lm) return;
-                // Raw positions are always from the original frame — used as
-                // the bone length reference so lengths never drift.
                 rawPositions.set(i, { x: lm.x, y: lm.y });
-                // Working positions include current overrides so the drag
-                // continues smoothly from wherever joints were left.
                 const ov = sourceOverrides?.get(i);
                 initialPositions.set(i, ov ? { x: ov.x, y: ov.y } : { x: lm.x, y: lm.y });
                 initialZ.set(i, lm.z ?? null);
@@ -258,12 +295,23 @@ export function useIKDrag(
                 y: clickedPos.y - repPos.y,
             };
 
+            // Measure bone lengths from the 2D positions visible right now.
+            // Storing these prevents the skeleton from snapping to 3D-estimated
+            // lengths that differ from the current frame's projection.
+            const chainBoneLengths: number[] = [];
+            for (let ci = 0; ci < chain.length - 1; ci++) {
+                const a = initialPositions.get(chain[ci]);
+                const b = initialPositions.get(chain[ci + 1]);
+                chainBoneLengths.push(a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0);
+            }
+
             dragRef.current = {
                 sourceIndex: bestSourceIndex,
                 chain,
                 initialPositions,
                 initialZ,
                 rawPositions,
+                chainBoneLengths,
                 group,
                 representativeIndex,
                 groupOffset,
@@ -308,20 +356,26 @@ export function useIKDrag(
                 y: poseTarget.y - groupOffset.y,
             };
 
-            const ikResult = solveFABRIK(chain, initialPositions, adjustedTarget, 10, initialZ, rawPositions);
+            // Use the 2D lengths captured at drag-start — no 3D estimation needed.
+            const { chainBoneLengths } = drag;
+            const ikMeta = ikMetasRef.current[sourceIndex];
+
+            const ikResult = solveFABRIK(
+                chain,
+                initialPositions,
+                adjustedTarget,
+                10,
+                chainBoneLengths ? undefined : initialZ,
+                chainBoneLengths ? undefined : rawPositions,
+                chainBoneLengths,
+            );
             if (ikResult.size === 0) return;
 
-            // Propagate each chain joint's displacement to its off-chain branches
-            // so that joints hanging off the chain (e.g. the arm off a shoulder)
-            // move with the chain rather than staying behind and over-stretching.
-            //
-            // We use the precomputed distance-to-nearest-anchor to determine
-            // kinematic direction: a neighbor is "downstream" only if its anchor
-            // distance is strictly greater than the current joint's anchor distance.
-            // This prevents cross-body flooding — e.g. dragging the left shoulder
-            // won't translate the right shoulder, because the right shoulder sits
-            // at equal anchor distance (both hips are anchors) and is filtered out.
-            const ikMeta = ikMetasRef.current[sourceIndex];
+            // ── Branch propagation ──────────────────────────────────────────────
+            // For every joint in the main chain that moved, rigidly translate all
+            // off-chain joints that hang "downstream" (away from the foot anchors).
+            // Shoulder and hip siblings are included explicitly so cross-body bones
+            // never stretch, even though they sit at the same anchor-distance level.
             if (ikMeta) {
                 const chainSet = new Set(chain);
                 for (let ci = 0; ci < chain.length - 1; ci++) {
@@ -338,7 +392,7 @@ export function useIKDrag(
                     branchVisited.add(jointIdx);
                     const branchQueue: number[] = [];
 
-                    // Seed with direct neighbors that are strictly further from all anchors.
+                    // Seed with direct neighbors strictly further from foot anchors.
                     for (const neighbor of ikMeta.adjacencyMap.get(jointIdx) ?? []) {
                         if (branchVisited.has(neighbor)) continue;
                         const neighborDist = ikMeta.distToAnchor.get(neighbor) ?? 0;
@@ -348,19 +402,23 @@ export function useIKDrag(
                         }
                     }
 
-                    // Also carry the shoulder sibling (if any) so the cross-shoulder
-                    // bone never stretches.  The sibling is at equal anchor distance
-                    // so the normal `> jointDist` filter would exclude it, but we
-                    // explicitly include it here to keep shoulder width intact.
+                    // Shoulder sibling: keep shoulder-width bone rigid.
                     const shoulderSibling = SHOULDER_SIBLINGS.get(jointIdx);
                     if (shoulderSibling != null && !branchVisited.has(shoulderSibling)) {
                         branchVisited.add(shoulderSibling);
                         branchQueue.push(shoulderSibling);
                     }
 
+                    // Hip sibling: keep pelvis-width bone rigid.
+                    // (Contralateral leg will be re-solved in the secondary pass below.)
+                    const hipSibling = HIP_SIBLINGS.get(jointIdx);
+                    if (hipSibling != null && !branchVisited.has(hipSibling)) {
+                        branchVisited.add(hipSibling);
+                        branchQueue.push(hipSibling);
+                    }
+
                     while (branchQueue.length > 0) {
                         const node = branchQueue.shift()!;
-                        // Only set if not yet written (group code below may refine later).
                         if (!ikResult.has(node)) {
                             const origNodePos = initialPositions.get(node);
                             if (origNodePos) {
@@ -379,8 +437,48 @@ export function useIKDrag(
                         }
                     }
                 }
+
+                // ── Secondary FABRIK pass: re-solve contralateral legs ──────────
+                // When HIP_SIBLINGS displaced a hip that isn't part of the main
+                // chain, its leg joints need a proper IK solve (not rigid translation)
+                // to keep the contralateral ankle at its fixed position.
+                const chainSet2 = new Set(chain);
+                for (const [hipIdx] of HIP_SIBLINGS) {
+                    if (chainSet2.has(hipIdx)) continue; // already solved by main chain
+                    const newHipPos = ikResult.get(hipIdx);
+                    if (!newHipPos) continue; // wasn't displaced
+
+                    // Find the leg chain from this hip to its ankle.
+                    const ankleIdx = hipIdx === 23 ? 27 : 28;
+                    const legChain = findChainToAnchor(ikMeta.adjacencyMap, hipIdx, new Set([ankleIdx]));
+                    if (!legChain || legChain.length <= 1) continue;
+
+                    // Measure leg bone lengths from current 2D positions (same
+                    // approach as the main chain — no 3D-estimated snapping).
+                    const legBoneLengths: number[] = [];
+                    for (let li = 0; li < legChain.length - 1; li++) {
+                        const a = initialPositions.get(legChain[li]);
+                        const b = initialPositions.get(legChain[li + 1]);
+                        legBoneLengths.push(a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0);
+                    }
+
+                    // Solve: move hip to newHipPos, ankle stays fixed.
+                    const legResult = solveFABRIK(
+                        legChain,
+                        initialPositions,
+                        newHipPos,
+                        10,
+                        undefined,
+                        undefined,
+                        legBoneLengths,
+                    );
+                    legResult.forEach((pos, idx) => {
+                        if (!chainSet2.has(idx)) ikResult.set(idx, pos);
+                    });
+                }
             }
 
+            // ── Group rigid propagation ─────────────────────────────────────────
             // Propagate representative displacement to all other group members
             // so the hand/foot translates as a rigid body.
             if (group && group.length > 1) {
@@ -425,16 +523,63 @@ export function useIKDrag(
         updateCursor('default');
     }, [updateCursor]);
 
+    const clearPins = useCallback(() => {
+        setPinnedJoints((prev) => prev.map(() => new Set<number>()));
+    }, []);
+
+    // ── Double-click: toggle a joint as a pinned anchor ───────────────────────
+    const onDoubleClick = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            if (!showPoseRef.current) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const cssX = e.clientX - rect.left;
+            const cssY = e.clientY - rect.top;
+            const w = rect.width;
+            const h = rect.height;
+
+            let bestSourceIndex = -1;
+            let bestLandmarkIndex = -1;
+            let bestDist = Infinity;
+
+            for (let i = 0; i < sourcesRef.current.length; i++) {
+                const hit = tryHit(i, cssX, cssY, w, h);
+                if (hit && hit.dist < bestDist) {
+                    bestDist = hit.dist;
+                    bestSourceIndex = i;
+                    bestLandmarkIndex = hit.landmarkIndex;
+                }
+            }
+
+            if (bestSourceIndex < 0) return;
+
+            setPinnedJoints((prev) => {
+                const next = [...prev];
+                const updated = new Set(next[bestSourceIndex]);
+                if (updated.has(bestLandmarkIndex)) {
+                    updated.delete(bestLandmarkIndex);
+                } else {
+                    updated.add(bestLandmarkIndex);
+                }
+                next[bestSourceIndex] = updated;
+                return next;
+            });
+        },
+        [tryHit],
+    );
+
     const hasOverrides = overrides.some((ov) => ov !== null && ov.size > 0);
 
     return {
         overrides,
         cursor,
         hasOverrides,
+        pinnedJoints,
         onPointerDown,
         onPointerMove,
         onPointerUp,
         onPointerLeave,
+        onDoubleClick,
         resetIK,
+        clearPins,
     };
 }

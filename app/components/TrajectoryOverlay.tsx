@@ -24,6 +24,8 @@ interface TrajectoryOverlayProps {
     poseColor?: RgbColor;
     /** Per-landmark position overrides produced by IK dragging. */
     landmarkOverrides?: Map<number, Pos2D> | null;
+    /** Joints pinned as IK anchors — rendered with a ring indicator. */
+    pinnedJoints?: Set<number> | null;
     className?: string;
 }
 
@@ -234,14 +236,16 @@ export function TrajectoryOverlay({
     showPose = true,
     poseColor = DEFAULT_POSE_COLOR,
     landmarkOverrides = null,
+    pinnedJoints = null,
     className,
 }: TrajectoryOverlayProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Keep a ref so the render-loop closure can always read the latest overrides
-    // without needing to be restarted when they change.
     const landmarkOverridesRef = useRef<Map<number, Pos2D> | null>(null);
     landmarkOverridesRef.current = landmarkOverrides;
+
+    const pinnedJointsRef = useRef<Set<number> | null>(null);
+    pinnedJointsRef.current = pinnedJoints;
 
     // A ref to `renderOnce` so the override-change effect can trigger a repaint
     // without adding `landmarkOverrides` to the main effect's dep array.
@@ -464,16 +468,24 @@ export function TrajectoryOverlay({
 
                 const pos = getPos(landmark, landmarkIndex);
                 const isOverridden = landmarkOverridesRef.current?.has(landmarkIndex) ?? false;
+                const isPinned = pinnedJointsRef.current?.has(landmarkIndex) ?? false;
+
+                const cx = videoRect.x + (pos.x * poseScaleX);
+                const cy = videoRect.y + (pos.y * poseScaleY);
+                const radius = isOverridden ? POSE_LANDMARK_RADIUS_PX + 2 : POSE_LANDMARK_RADIUS_PX;
 
                 context.beginPath();
-                context.arc(
-                    videoRect.x + (pos.x * poseScaleX),
-                    videoRect.y + (pos.y * poseScaleY),
-                    isOverridden ? POSE_LANDMARK_RADIUS_PX + 2 : POSE_LANDMARK_RADIUS_PX,
-                    0,
-                    Math.PI * 2,
-                );
+                context.arc(cx, cy, radius, 0, Math.PI * 2);
                 context.fill();
+
+                // Draw a concentric ring around pinned joints.
+                if (isPinned) {
+                    context.beginPath();
+                    context.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+                    context.strokeStyle = `rgba(${poseColor.r}, ${poseColor.g}, ${poseColor.b}, 0.7)`;
+                    context.lineWidth = 1.5;
+                    context.stroke();
+                }
             });
         };
 
@@ -567,11 +579,11 @@ export function TrajectoryOverlay({
         };
     }, [containerRef, enabled, historyWindowSec, maxVelocityByTrack, metadata, poseColor.b, poseColor.g, poseColor.r, showBlackBackground, showPose, videoRef, visibleTrackNames]);
 
-    // When overrides change (IK drag updates), force a repaint without
-    // restarting the main render loop.
+    // When overrides or pin state change (IK drag updates), force a repaint
+    // without restarting the main render loop.
     useEffect(() => {
         renderOnceRef.current?.();
-    }, [landmarkOverrides]);
+    }, [landmarkOverrides, pinnedJoints]);
 
     return <canvas ref={canvasRef} className={`absolute inset-0 h-full w-full pointer-events-none ${className ?? ''}`.trim()} />;
 }

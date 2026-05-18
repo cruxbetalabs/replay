@@ -1,5 +1,68 @@
 import type { PoseFrame, PoseLandmark, TrajectoryMetadata } from './trajectory-types';
 
+// ---------------------------------------------------------------------------
+// Canonical bone length utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Stable key for a bone between two landmark indices (order-independent).
+ */
+export function canonicalBoneKey(a: number, b: number): string {
+    return `${Math.min(a, b)}_${Math.max(a, b)}`;
+}
+
+/**
+ * Computes a stable per-bone length by taking the **median** 3D length
+ * across all frames where both endpoints have sufficient visibility.
+ *
+ * MediaPipe z is in the same normalized scale as x/y before pixel mapping,
+ * so it must be scaled by `coordinateSpaceWidth` (image width in pixels) to
+ * be comparable to the pixel-space x/y values.
+ *
+ * Returning the median rather than a single-frame value suppresses noise from
+ * foreshortening, occlusion, and MediaPipe estimation jitter.
+ */
+export function computeCanonicalBoneLengths(
+    frames: PoseFrame[],
+    connections: [number, number][],
+    coordinateSpaceWidth: number,
+): Map<string, number> {
+    const buckets = new Map<string, number[]>();
+
+    for (const frame of frames) {
+        if (!frame.landmarks) continue;
+        for (const [a, b] of connections) {
+            const lmA = frame.landmarks[a];
+            const lmB = frame.landmarks[b];
+            if (!lmA || !lmB) continue;
+            // Skip low-visibility frames to avoid foreshortening artifacts.
+            if ((lmA.visibility ?? 1) < 0.5 || (lmB.visibility ?? 1) < 0.5) continue;
+
+            // Scale z to pixel space before computing 3D distance.
+            const dz = ((lmB.z ?? 0) - (lmA.z ?? 0)) * coordinateSpaceWidth;
+            const len = Math.hypot(lmB.x - lmA.x, lmB.y - lmA.y, dz);
+
+            const key = canonicalBoneKey(a, b);
+            const bucket = buckets.get(key);
+            if (bucket) {
+                bucket.push(len);
+            } else {
+                buckets.set(key, [len]);
+            }
+        }
+    }
+
+    const result = new Map<string, number>();
+    for (const [key, vals] of buckets) {
+        if (vals.length === 0) continue;
+        vals.sort((x, y) => x - y);
+        result.set(key, vals[Math.floor(vals.length / 2)]);
+    }
+    return result;
+}
+
+export type Pos2D = { x: number; y: number };
+
 export type Pos2D = { x: number; y: number };
 
 // ---------------------------------------------------------------------------
@@ -125,6 +188,13 @@ export function solveFABRIK(
      * across multiple drag gestures.
      */
     boneReferencePositions?: Map<number, Pos2D>,
+    /**
+     * Pre-computed canonical bone lengths for this chain (in chain order,
+     * index i = length of bone between chain[i] and chain[i+1]).
+     * When provided, overrides all position-derived length computation and
+     * ensures lengths are stable across every drag gesture.
+     */
+    explicitBoneLengths?: number[],
 ): Map<number, Pos2D> {
     if (chain.length === 0) return new Map();
 
@@ -139,11 +209,10 @@ export function solveFABRIK(
         return p ? { x: p.x, y: p.y } : { x: 0, y: 0 };
     });
 
-    // Bone lengths come from the reference positions (raw frame) when provided,
-    // falling back to the working positions.  Using raw frame positions prevents
-    // bone lengths from drifting across multiple drag gestures.
+    // Bone lengths: use explicit canonical lengths when provided (best accuracy).
+    // Otherwise derive from reference positions (raw frame) with optional z depth.
     const refPositions = boneReferencePositions ?? initialPositions;
-    const boneLengths = chain.slice(0, -1).map((_, i) => {
+    const boneLengths = explicitBoneLengths ?? chain.slice(0, -1).map((_, i) => {
         const a = refPositions.get(chain[i]) ?? positions[i];
         const b = refPositions.get(chain[i + 1]) ?? positions[i + 1];
         const zA = initialZ?.get(chain[i]) ?? null;
@@ -393,6 +462,31 @@ export const SHOULDER_SIBLINGS: ReadonlyMap<number, number> = new Map([
     [11, 12], // left_shoulder  ↔  right_shoulder
     [12, 11],
 ]);
+
+/**
+ * Hip joints are connected to each other (23↔24).  When one hip is displaced
+ * (e.g. due to a whole-body chain drag), the contralateral hip receives the
+ * same rigid offset so the pelvis width stays intact.  A secondary FABRIK
+ * pass then re-solves the contralateral leg to keep its ankle anchored.
+ *
+ * MediaPipe Pose: 23 = left_hip, 24 = right_hip.
+ */
+export const HIP_SIBLINGS: ReadonlyMap<number, number> = new Map([
+    [23, 24], // left_hip  ↔  right_hip
+    [24, 23],
+]);
+
+/**
+ * Default IK anchor joints: both ankles.
+ *
+ * Using ankles (rather than hips) as the default anchor lets the entire body
+ * chain participate in IK — dragging a wrist produces a natural whole-body
+ * chain wrist → elbow → shoulder → hip → knee → ankle rather than stopping
+ * rigidly at the hip.  The pelvis and torso follow naturally.
+ *
+ * MediaPipe Pose: 27 = left_ankle, 28 = right_ankle.
+ */
+export const DEFAULT_IK_ANCHOR_JOINTS: ReadonlySet<number> = new Set([27, 28]);
 
 /** Return the joint group an index belongs to, or `null` if ungrouped. */
 export function getLandmarkGroup(index: number): readonly number[] | null {
