@@ -111,6 +111,8 @@ export function OnboardingContent() {
                     <CodeBlock
                         lines={[
                             'cruxes body-trajectory \\',
+                            '  --pose_backend "mediapipe" \\',
+                            '  --smooth "gaussian" \\',
                             '  --video_path climb.mp4 \\',
                             '  --export_metadata \\',
                             '  --json_only',
