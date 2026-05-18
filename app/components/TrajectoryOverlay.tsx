@@ -25,7 +25,7 @@ interface TrajectoryOverlayProps {
     /** Per-landmark position overrides produced by IK dragging. */
     landmarkOverrides?: Map<number, Pos2D> | null;
     /** Joints pinned as IK anchors — rendered with a ring indicator. */
-    pinnedJoints?: Set<number> | null;
+    pinnedJoints?: ReadonlySet<number> | null;
     className?: string;
 }
 
@@ -244,7 +244,7 @@ export function TrajectoryOverlay({
     const landmarkOverridesRef = useRef<Map<number, Pos2D> | null>(null);
     landmarkOverridesRef.current = landmarkOverrides;
 
-    const pinnedJointsRef = useRef<Set<number> | null>(null);
+    const pinnedJointsRef = useRef<ReadonlySet<number> | null>(null);
     pinnedJointsRef.current = pinnedJoints;
 
     // A ref to `renderOnce` so the override-change effect can trigger a repaint

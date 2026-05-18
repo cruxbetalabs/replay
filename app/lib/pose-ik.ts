@@ -63,8 +63,6 @@ export function computeCanonicalBoneLengths(
 
 export type Pos2D = { x: number; y: number };
 
-export type Pos2D = { x: number; y: number };
-
 // ---------------------------------------------------------------------------
 // Skeleton graph
 // ---------------------------------------------------------------------------
@@ -111,7 +109,7 @@ export function findAnchorLandmarks(connections: [number, number][], topN = 2): 
  */
 export function computeDistToNearestAnchor(
     adjacencyMap: Map<number, number[]>,
-    anchors: Set<number>,
+    anchors: ReadonlySet<number>,
 ): Map<number, number> {
     const dist = new Map<number, number>();
     const queue: number[] = [];
@@ -139,7 +137,7 @@ export function computeDistToNearestAnchor(
 export function findChainToAnchor(
     graph: Map<number, number[]>,
     startIndex: number,
-    anchors: Set<number>,
+    anchors: ReadonlySet<number>,
 ): number[] | null {
     if (anchors.has(startIndex)) return [startIndex];
     const visited = new Set<number>([startIndex]);
