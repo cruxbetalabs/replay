@@ -15,7 +15,7 @@ export interface PresetComparison {
         videoFileName: string;
         metadataFileName: string;
     };
-    right: {
+    right?: {
         videoUrl: string;
         metadataUrl: string;
         videoFileName: string;
@@ -39,6 +39,16 @@ export const PRESET_COMPARISONS: PresetComparison[] = [
             metadataUrl: '/examples/1-right_trajectory_metadata.json',
             videoFileName: '1-right.mp4',
             metadataFileName: '1-right_trajectory_metadata.json',
+        },
+    },
+    {
+        id: '2',
+        label: 'Load Example 2',
+        left: {
+            videoUrl: '/examples/2.mp4',
+            metadataUrl: '/examples/2_trajectory_metadata.json',
+            videoFileName: '2.mp4',
+            metadataFileName: '2_trajectory_metadata.json',
         },
     },
 ];

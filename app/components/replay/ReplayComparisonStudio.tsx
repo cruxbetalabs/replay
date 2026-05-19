@@ -9,6 +9,7 @@ import { useVideoSources } from '../../hooks/useVideoSources';
 import { getKeyMomentStorageKey, type KeyMoment } from '../../lib/key-moments';
 import type { KeyMomentPresetState } from '../../lib/presets';
 import { PRESET_COMPARISONS, type PresetComparison } from '../../lib/presets';
+import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
 
 interface ReplayComparisonStudioProps {
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
@@ -67,6 +68,9 @@ export function ReplayComparisonStudio({
 
     const [presetKeyMomentsStamp, setPresetKeyMomentsStamp] = useState<string | null>(null);
     const [presetKeyMomentsState, setPresetKeyMomentsState] = useState<KeyMomentPresetState | null>(null);
+    const [presetLoadOpen, setPresetLoadOpen] = useState(false);
+    const [presetLoadLabel, setPresetLoadLabel] = useState('');
+    const [presetLoadRows, setPresetLoadRows] = useState<PresetLoadFileRow[]>([]);
 
     const loadPreset = useCallback(async (preset: PresetComparison) => {
         clearVideoDimensions(0);
@@ -74,25 +78,56 @@ export function ReplayComparisonStudio({
 
         const videoFile1 = new File([], preset.left.videoFileName, { type: 'video/mp4' });
         replaceVideoSource(0, videoFile1, preset.left.videoUrl);
-        const videoFile2 = new File([], preset.right.videoFileName, { type: 'video/mp4' });
-        replaceVideoSource(1, videoFile2, preset.right.videoUrl);
+        if (preset.right) {
+            const videoFile2 = new File([], preset.right.videoFileName, { type: 'video/mp4' });
+            replaceVideoSource(1, videoFile2, preset.right.videoUrl);
+        }
+
+        const initialRows: PresetLoadFileRow[] = [
+            { key: 'left-meta', fileName: preset.left.metadataFileName, kind: 'metadata', status: 'loading' },
+            ...(preset.right ? [{ key: 'right-meta', fileName: preset.right.metadataFileName, kind: 'metadata' as const, status: 'loading' as const }] : []),
+        ];
+        if (preset.keyMomentsUrl) {
+            const kmFileName = preset.keyMomentsUrl.split('/').pop() ?? 'keyframes.json';
+            initialRows.push({ key: 'keymoments', fileName: kmFileName, kind: 'keymoments', status: 'loading' });
+        }
+
+        setPresetLoadLabel(preset.label);
+        setPresetLoadRows(initialRows);
+        setPresetLoadOpen(true);
+
+        const updateRow = (key: string, update: Partial<PresetLoadFileRow>) =>
+            setPresetLoadRows((prev) => prev.map((r) => r.key === key ? { ...r, ...update } : r));
+
+        const successMap: Record<string, boolean> = {};
+
+        const fetchMeta = async (index: 0 | 1, key: string, url: string, fileName: string) => {
+            try {
+                const r = await fetch(url);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const blob = await r.blob();
+                await handleTrajectoryFile(index, new File([blob], fileName, { type: 'application/json' }));
+                updateRow(key, { status: 'success' });
+                successMap[key] = true;
+            } catch (err) {
+                updateRow(key, { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
+                successMap[key] = false;
+            }
+        };
 
         const fetches: Promise<void>[] = [
-            fetch(preset.left.metadataUrl)
-                .then((r) => r.blob())
-                .then((blob) => handleTrajectoryFile(0, new File([blob], preset.left.metadataFileName, { type: 'application/json' })))
-                .then(() => undefined),
-            fetch(preset.right.metadataUrl)
-                .then((r) => r.blob())
-                .then((blob) => handleTrajectoryFile(1, new File([blob], preset.right.metadataFileName, { type: 'application/json' })))
-                .then(() => undefined),
+            fetchMeta(0, 'left-meta', preset.left.metadataUrl, preset.left.metadataFileName),
+            ...(preset.right ? [fetchMeta(1, 'right-meta', preset.right.metadataUrl, preset.right.metadataFileName)] : []),
         ];
 
         if (preset.keyMomentsUrl) {
+            const kmUrl = preset.keyMomentsUrl;
             fetches.push(
-                fetch(preset.keyMomentsUrl)
-                    .then((r) => r.json() as Promise<unknown>)
-                    .then((data) => {
+                (async () => {
+                    try {
+                        const r = await fetch(kmUrl);
+                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                        const data = await r.json() as unknown;
                         if (
                             data !== null
                             && typeof data === 'object'
@@ -106,12 +141,24 @@ export function ReplayComparisonStudio({
                             });
                             setPresetKeyMomentsStamp(crypto.randomUUID());
                         }
-                    })
-                    .then(() => undefined),
+                        updateRow('keymoments', { status: 'success' });
+                        successMap['keymoments'] = true;
+                    } catch (err) {
+                        updateRow('keymoments', { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
+                        successMap['keymoments'] = false;
+                    }
+                })()
             );
         }
 
         await Promise.all(fetches);
+
+        if (
+            Object.keys(successMap).length === initialRows.length
+            && Object.values(successMap).every(Boolean)
+        ) {
+            setTimeout(() => setPresetLoadOpen(false), 1200);
+        }
     }, [clearVideoDimensions, handleTrajectoryFile, replaceVideoSource]);
 
     const splitViewContent = useCallback(({
@@ -172,25 +219,33 @@ export function ReplayComparisonStudio({
     ]);
 
     return (
-        <ReplayComparisonWorkspace
-            splitViewContent={splitViewContent}
-            videoRefs={videoRefs}
-            videoUrls={videoUrls}
-            overlayMetadataByIndex={overlayMetadataByIndex}
-            canRenderOverlayByIndex={canRenderOverlayByIndex}
-            availableTrajectoryTrackNames={availableTrajectoryTrackNames}
-            hasAnyOverlayData={hasAnyOverlayData}
-            hasPoseMetadata={hasPoseMetadata}
-            storageKey={keyMomentStorageKey}
-            showRemoveVideos
-            onRemoveVideo1={handleRemoveVideo1}
-            onRemoveVideo2={handleRemoveVideo2}
-            onRemoveMetadata={handleRemoveAllMetadata}
-            onKeyMomentsChange={onKeyMomentsChange}
-            presets={PRESET_COMPARISONS}
-            onLoadPreset={loadPreset}
-            presetKeyMomentsStamp={presetKeyMomentsStamp}
-            presetKeyMomentsState={presetKeyMomentsState}
-        />
+        <>
+            <ReplayComparisonWorkspace
+                splitViewContent={splitViewContent}
+                videoRefs={videoRefs}
+                videoUrls={videoUrls}
+                overlayMetadataByIndex={overlayMetadataByIndex}
+                canRenderOverlayByIndex={canRenderOverlayByIndex}
+                availableTrajectoryTrackNames={availableTrajectoryTrackNames}
+                hasAnyOverlayData={hasAnyOverlayData}
+                hasPoseMetadata={hasPoseMetadata}
+                storageKey={keyMomentStorageKey}
+                showRemoveVideos
+                onRemoveVideo1={handleRemoveVideo1}
+                onRemoveVideo2={handleRemoveVideo2}
+                onRemoveMetadata={handleRemoveAllMetadata}
+                onKeyMomentsChange={onKeyMomentsChange}
+                presets={PRESET_COMPARISONS}
+                onLoadPreset={loadPreset}
+                presetKeyMomentsStamp={presetKeyMomentsStamp}
+                presetKeyMomentsState={presetKeyMomentsState}
+            />
+            <PresetLoadingDialog
+                open={presetLoadOpen}
+                presetLabel={presetLoadLabel}
+                rows={presetLoadRows}
+                onClose={() => setPresetLoadOpen(false)}
+            />
+        </>
     );
 }
