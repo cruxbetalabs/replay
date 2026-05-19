@@ -54,14 +54,6 @@ interface ReplayMenubarProps {
     resolvedViewMode: 'split' | 'overlay';
     hasAnyOverlayData: boolean;
     onSetViewMode: (mode: 'split' | 'overlay') => void;
-    // Overlays
-    hasPoseMetadata: boolean;
-    showTrajectory: boolean;
-    showPose: boolean;
-    onToggleTrajectory: () => void;
-    onTogglePose: () => void;
-    onShowAllTracks: () => void;
-    onHideAllTracks: () => void;
     // Videos
     hasVideo1: boolean;
     hasVideo2: boolean;
@@ -80,13 +72,6 @@ export function ReplayMenubar({
     resolvedViewMode,
     hasAnyOverlayData,
     onSetViewMode,
-    hasPoseMetadata,
-    showTrajectory,
-    showPose,
-    onToggleTrajectory,
-    onTogglePose,
-    onShowAllTracks,
-    onHideAllTracks,
     hasVideo1,
     hasVideo2,
     showRemoveVideos = true,
@@ -97,7 +82,6 @@ export function ReplayMenubar({
     presets,
     onLoadPreset,
 }: ReplayMenubarProps) {
-    const hasOverlayControls = hasAnyOverlayData || hasPoseMetadata;
     const hasVideoControls = showRemoveVideos && (hasVideo1 || hasVideo2);
     const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -121,59 +105,6 @@ export function ReplayMenubar({
                         </MenubarItem>
                     </MenubarContent>
                 </MenubarMenu>
-
-                {/* View */}
-                <MenubarMenu>
-                    <MenubarTrigger>View</MenubarTrigger>
-                    <MenubarContent>
-                        <MenubarItem
-                            disabled={resolvedViewMode === 'split'}
-                            onSelect={() => onSetViewMode('split')}
-                        >
-                            Split View
-                            <MenubarShortcut>,</MenubarShortcut>
-                        </MenubarItem>
-                        <MenubarItem
-                            disabled={resolvedViewMode === 'overlay' || !hasAnyOverlayData}
-                            onSelect={() => onSetViewMode('overlay')}
-                        >
-                            Overlay View
-                            <MenubarShortcut>.</MenubarShortcut>
-                        </MenubarItem>
-                    </MenubarContent>
-                </MenubarMenu>
-
-                {/* Overlays */}
-                {hasOverlayControls && (
-                    <MenubarMenu>
-                        <MenubarTrigger>Overlays</MenubarTrigger>
-                        <MenubarContent>
-                            {hasPoseMetadata && (
-                                <MenubarItem onSelect={onTogglePose}>
-                                    {showPose ? 'Hide Pose' : 'Show Pose'}
-                                    <MenubarShortcut>[</MenubarShortcut>
-                                </MenubarItem>
-                            )}
-                            {hasAnyOverlayData && (
-                                <MenubarItem onSelect={onToggleTrajectory}>
-                                    {showTrajectory ? 'Hide Trajectory' : 'Show Trajectory'}
-                                    <MenubarShortcut>]</MenubarShortcut>
-                                </MenubarItem>
-                            )}
-                            {hasAnyOverlayData && (
-                                <>
-                                    <MenubarSeparator />
-                                    <MenubarItem onSelect={onShowAllTracks}>
-                                        Show All Tracks
-                                    </MenubarItem>
-                                    <MenubarItem onSelect={onHideAllTracks}>
-                                        Hide All Tracks
-                                    </MenubarItem>
-                                </>
-                            )}
-                        </MenubarContent>
-                    </MenubarMenu>
-                )}
 
                 {/* Videos */}
                 {hasVideoControls && (

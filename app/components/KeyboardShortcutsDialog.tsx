@@ -53,6 +53,10 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
                             <span className="flex-1">Toggle trajectory overlay</span>
                             <Kbd>]</Kbd>
                         </CommandItem>
+                        <CommandItem>
+                            <span className="flex-1">Reset pose</span>
+                            <Kbd>\</Kbd>
+                        </CommandItem>
                     </CommandGroup>
 
                     <CommandSeparator />

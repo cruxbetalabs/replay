@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import type { RefObject } from 'react';
+import { useEffect, useRef } from 'react';
+import type { RefObject, MutableRefObject } from 'react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
 import { useIKDrag } from '../hooks/useIKDrag';
@@ -16,6 +16,7 @@ interface OverlayComparisonStageProps {
     visibleTrajectoryTrackNames: string[];
     historyWindowSec: number | null;
     showPose: boolean;
+    resetIKRef?: MutableRefObject<(() => void) | null>;
 }
 
 const SOURCE_LEGEND = [
@@ -43,6 +44,7 @@ export function OverlayComparisonStage({
     visibleTrajectoryTrackNames,
     historyWindowSec,
     showPose,
+    resetIKRef,
 }: OverlayComparisonStageProps) {
     const stageRef = useRef<HTMLDivElement>(null);
     const hasRenderableOverlay = (metadata1 && canRender1) || (metadata2 && canRender2);
@@ -64,6 +66,11 @@ export function OverlayComparisonStage({
         showPose,
     );
 
+    useEffect(() => {
+        if (!resetIKRef) return;
+        resetIKRef.current = resetIK;
+        return () => { resetIKRef.current = null; };
+    }, [resetIK, resetIKRef]);
 
 
     return (

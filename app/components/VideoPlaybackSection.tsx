@@ -13,10 +13,6 @@ interface VideoPlaybackSectionProps {
     keyMoments: KeyMoment[];
     selectedKeyMomentId: string | null;
     selectedPosition: KeyMomentPosition | null;
-    accentClassName: string;
-    timelineAccentClassName: string;
-    sliderClassName: string;
-    metaClassName: string;
     onSeek: (time: number) => void;
     onActivateSlider: (videoIndex: VideoIndex) => void;
     onSelectKeyMoment: (keyMomentId: string) => void;
@@ -34,16 +30,23 @@ export function VideoPlaybackSection({
     keyMoments,
     selectedKeyMomentId,
     selectedPosition,
-    accentClassName,
-    timelineAccentClassName,
-    sliderClassName,
-    metaClassName,
     onSeek,
     onActivateSlider,
     onSelectKeyMoment,
     onDeselectKeyMoment,
     onChangeKeyMomentTime,
 }: VideoPlaybackSectionProps) {
+    const accentClassName = 'text-gray-800 dark:text-gray-200';
+    const timelineAccentClassName = videoIndex === 0
+        ? 'bg-white border-blue-600 text-blue-700'
+        : 'bg-white border-green-600 text-green-700';
+    const sliderClassName = videoIndex === 0
+        ? 'w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700'
+        : 'w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-600 hover:accent-green-700';
+    const metaClassName = videoIndex === 0
+        ? 'text-blue-700 dark:text-blue-300'
+        : 'text-green-700 dark:text-green-300';
+
     return (
         <div>
             <div className="flex items-center justify-between mb-2">

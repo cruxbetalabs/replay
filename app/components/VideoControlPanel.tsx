@@ -138,10 +138,6 @@ export function VideoControlPanel({
                         keyMoments={keyMoments}
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition1}
-                        accentClassName="text-gray-800 dark:text-gray-200"
-                        timelineAccentClassName="bg-white border-blue-600 text-blue-700"
-                        sliderClassName="w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-700"
-                        metaClassName="text-blue-700 dark:text-blue-300"
                         onSeek={onSeek1}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
@@ -160,10 +156,6 @@ export function VideoControlPanel({
                         keyMoments={keyMoments}
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition2}
-                        accentClassName="text-gray-800 dark:text-gray-200"
-                        timelineAccentClassName="bg-white border-green-600 text-green-700"
-                        sliderClassName="w-full h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-600 hover:accent-green-700"
-                        metaClassName="text-green-700 dark:text-green-300"
                         onSeek={onSeek2}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}

@@ -14,6 +14,7 @@ interface UseComparisonShortcutsOptions {
     onTogglePose: () => void;
     onToggleTrajectory: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
+    onResetPose?: () => void;
 }
 
 export function useComparisonShortcuts({
@@ -27,6 +28,7 @@ export function useComparisonShortcuts({
     onTogglePose,
     onToggleTrajectory,
     onToggleTrajectoryTrack,
+    onResetPose,
 }: UseComparisonShortcutsOptions) {
 
     const viewShortcuts = useMemo<KeyboardShortcut[]>(() => ([
@@ -42,7 +44,13 @@ export function useComparisonShortcuts({
         },
     ]), [hasAnyOverlayData, onSetViewMode, resolvedViewMode]);
 
-    const shortcuts = useMemo(() => [addKeyShortcut, ...viewShortcuts, ...keyMomentShortcuts], [addKeyShortcut, keyMomentShortcuts, viewShortcuts]);
+    const resetPoseShortcut = useMemo<KeyboardShortcut>(() => ({
+        key: '\\',
+        enabled: hasPoseMetadata,
+        onTrigger: () => onResetPose?.(),
+    }), [hasPoseMetadata, onResetPose]);
+
+    const shortcuts = useMemo(() => [addKeyShortcut, ...viewShortcuts, resetPoseShortcut, ...keyMomentShortcuts], [addKeyShortcut, keyMomentShortcuts, resetPoseShortcut, viewShortcuts]);
     const enabled = Boolean(
         keyMomentShortcuts.length > 0
         || hasPoseMetadata

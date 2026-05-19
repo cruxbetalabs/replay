@@ -26,7 +26,7 @@ export interface PresetComparison {
 export const PRESET_COMPARISONS: PresetComparison[] = [
     {
         id: '1',
-        label: 'Example 1',
+        label: 'Load Example 1',
         keyMomentsUrl: '/examples/1-keyframes.config.json',
         left: {
             videoUrl: '/examples/1-left.mp4',

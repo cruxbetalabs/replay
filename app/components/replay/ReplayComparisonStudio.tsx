@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { VideoDropzone } from '../VideoDropzone';
-import { ReplayComparisonWorkspace } from './ReplayComparisonWorkspace';
+import { ReplayComparisonWorkspace, type SplitViewContentProps } from './ReplayComparisonWorkspace';
 import { useTrajectoryState } from '../../hooks/useTrajectoryState';
 import { useVideoSources } from '../../hooks/useVideoSources';
 import { getKeyMomentStorageKey, type KeyMoment } from '../../lib/key-moments';
@@ -119,12 +119,8 @@ export function ReplayComparisonStudio({
         trajectoryHistoryWindowSec,
         visibleTrajectoryTrackNames,
         showPose,
-    }: {
-        calculatingByIndex: [boolean, boolean];
-        trajectoryHistoryWindowSec: number | null;
-        visibleTrajectoryTrackNames: string[];
-        showPose: boolean;
-    }): ReactNode => (
+        resetIKRefs,
+    }: SplitViewContentProps): ReactNode => (
         <>
             <VideoDropzone
                 label="Video 1"
@@ -141,6 +137,7 @@ export function ReplayComparisonStudio({
                 showPose={showPose}
                 onRemoveTrajectory={() => clearTrajectory(0)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(0, metadata)}
+                resetIKRef={resetIKRefs[0]}
             />
             <VideoDropzone
                 label="Video 2"
@@ -157,6 +154,7 @@ export function ReplayComparisonStudio({
                 showPose={showPose}
                 onRemoveTrajectory={() => clearTrajectory(1)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(1, metadata)}
+                resetIKRef={resetIKRefs[1]}
             />
         </>
     ), [

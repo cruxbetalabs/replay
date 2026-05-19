@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useId, useRef, useState } from 'react';
-import { FileJson2, FileVideo } from 'lucide-react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { CloudUpload, FileJson2, FileVideo } from 'lucide-react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import { StageToast, type ProcessResult } from './StageToast';
 import { StageReplaceConfirm } from './StageReplaceConfirm';
@@ -107,6 +107,7 @@ type VideoDropzoneProps = {
     showPose?: boolean;
     onRemoveTrajectory?: () => void;
     onVideoMetadataLoad?: (metadata: VideoDimensions) => void;
+    resetIKRef?: React.MutableRefObject<(() => void) | null>;
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             showPose = true,
             onRemoveTrajectory: _onRemoveTrajectory,
             onVideoMetadataLoad,
+            resetIKRef,
         }: VideoDropzoneProps,
         ref,
     ) {
@@ -158,6 +160,12 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             [{ metadata: trajectoryMetadata, videoRef: resolvedVideoRef, canRender: canRenderTrajectory }],
             showPose,
         );
+
+        useEffect(() => {
+            if (!resetIKRef) return;
+            resetIKRef.current = resetIK;
+            return () => { resetIKRef.current = null; };
+        }, [resetIK, resetIKRef]);
 
         // ── Drop processing state ────────────────────────────────────────────
         const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -434,21 +442,9 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 htmlFor={videoInputId}
                                 className={`flex flex-1 cursor-pointer flex-col items-center justify-center transition-colors ${isDraggingOver ? 'bg-cyan-50' : 'hover:bg-gray-50'}`}
                             >
-                                <svg
-                                    className="mb-3 h-12 w-12 text-gray-400"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={1.5}
-                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                                    />
-                                </svg>
-                                <p className="mb-1 text-sm font-semibold text-gray-500">{label}</p>
-                                <p className="text-xs text-gray-400">
+                                <CloudUpload className="mb-3 h-12 w-12 text-gray-400" />
+                                <p className="mb-1 text-base font-bold text-gray-500">{label}</p>
+                                <p className="text-sm text-gray-400">
                                     Drop files here or click to upload a video
                                 </p>
                             </label>

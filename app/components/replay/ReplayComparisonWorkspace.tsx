@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode, RefObject } from 'react';
+import type { ReactNode, RefObject, MutableRefObject } from 'react';
 import { OverlayComparisonStage } from '../OverlayComparisonStage';
 import { MouseControlPanel } from '../MouseControlPanel';
 import { KeyboardShortcutsDialog } from '../KeyboardShortcutsDialog';
@@ -19,11 +19,12 @@ import type { KeyMoment } from '../../lib/key-moments';
 import type { TrajectoryMetadata } from '../../lib/trajectory-types';
 import type { PresetComparison } from '../../lib/presets';
 
-interface SplitViewContentProps {
+export interface SplitViewContentProps {
     calculatingByIndex: [boolean, boolean];
     trajectoryHistoryWindowSec: number | null;
     visibleTrajectoryTrackNames: string[];
     showPose: boolean;
+    resetIKRefs: [MutableRefObject<(() => void) | null>, MutableRefObject<(() => void) | null>];
 }
 
 interface ReplayComparisonWorkspaceProps {
@@ -72,6 +73,17 @@ export function ReplayComparisonWorkspace({
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const hasVideoByIndex: [boolean, boolean] = [Boolean(videoUrls[0]), Boolean(videoUrls[1])];
+
+    const splitResetRef1 = useRef<(() => void) | null>(null);
+    const splitResetRef2 = useRef<(() => void) | null>(null);
+    const overlayResetRef = useRef<(() => void) | null>(null);
+    const resetIKRefs: [MutableRefObject<(() => void) | null>, MutableRefObject<(() => void) | null>] = [splitResetRef1, splitResetRef2];
+
+    const handleResetPose = useCallback(() => {
+        splitResetRef1.current?.();
+        splitResetRef2.current?.();
+        overlayResetRef.current?.();
+    }, []);
 
     const { boxRef, direction, speed, movement, controlMode } = useMouseControl({ controlMode: 'both' });
     const { fps, fpsByIndex, calculatingByIndex } = useVideoFps({
@@ -159,6 +171,7 @@ export function ReplayComparisonWorkspace({
         onTogglePose: togglePose,
         onToggleTrajectory: toggleTrajectory,
         onToggleTrajectoryTrack: toggleTrajectoryTrack,
+        onResetPose: handleResetPose,
     });
 
     useKeyboardShortcuts({
@@ -210,13 +223,6 @@ export function ReplayComparisonWorkspace({
                             resolvedViewMode={resolvedViewMode}
                             hasAnyOverlayData={hasAnyOverlayData}
                             onSetViewMode={handleSetViewMode}
-                            hasPoseMetadata={hasPoseMetadata}
-                            showTrajectory={showTrajectory}
-                            showPose={showPose}
-                            onToggleTrajectory={toggleTrajectory}
-                            onTogglePose={togglePose}
-                            onShowAllTracks={showAllTrajectoryTracks}
-                            onHideAllTracks={hideAllTrajectoryTracks}
                             hasVideo1={hasVideoByIndex[0]}
                             hasVideo2={hasVideoByIndex[1]}
                             showRemoveVideos={showRemoveVideos}
@@ -247,6 +253,7 @@ export function ReplayComparisonWorkspace({
                                 trajectoryHistoryWindowSec,
                                 visibleTrajectoryTrackNames: effectiveVisibleTrackNames,
                                 showPose,
+                                resetIKRefs,
                             })}
                         </div>
                     </TabsContent>
@@ -263,6 +270,7 @@ export function ReplayComparisonWorkspace({
                             visibleTrajectoryTrackNames={effectiveVisibleTrackNames}
                             historyWindowSec={trajectoryHistoryWindowSec}
                             showPose={showPose}
+                            resetIKRef={overlayResetRef}
                         />
                     </TabsContent>
                 </Tabs>
