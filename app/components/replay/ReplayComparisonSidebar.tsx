@@ -5,6 +5,7 @@ import { SwipeStatsPanel } from '../SwipeStatsPanel';
 import { VideoControlPanel } from '../VideoControlPanel';
 import { OnboardingContent } from './OnboardingContent';
 import type { KeyMoment } from '../../lib/key-moments';
+import type { VelocityColorPreset } from '../../lib/trajectory-types';
 
 interface ReplayComparisonSidebarProps {
     // Video control
@@ -57,6 +58,7 @@ interface ReplayComparisonSidebarProps {
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
     onRemoveMetadata?: () => void;
+    velocityColorPreset?: VelocityColorPreset | null;
 }
 
 export function ReplayComparisonSidebar({
@@ -107,6 +109,7 @@ export function ReplayComparisonSidebar({
     onHideAllTracks,
     onToggleTrajectoryTrack,
     onRemoveMetadata,
+    velocityColorPreset,
 }: ReplayComparisonSidebarProps) {
     return (
         <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-700">
@@ -166,6 +169,7 @@ export function ReplayComparisonSidebar({
                     onHideAllTracks={onHideAllTracks}
                     onToggleTrajectoryTrack={onToggleTrajectoryTrack}
                     onRemoveMetadata={onRemoveMetadata}
+                    velocityColorPreset={velocityColorPreset}
                 />}
             </div>
         </div>

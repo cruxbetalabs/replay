@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { RotateCcwIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { SidebarPanel } from './SidebarPanel';
+import type { VelocityColorPreset } from '../lib/trajectory-types';
 
 const BODY_TRACK_LAYOUT = [
     {
@@ -70,6 +71,7 @@ interface OverlaySettingsPanelProps {
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
     onRemoveMetadata?: () => void;
+    velocityColorPreset?: VelocityColorPreset | null;
 }
 
 export function OverlaySettingsPanel({
@@ -88,6 +90,7 @@ export function OverlaySettingsPanel({
     onHideAllTracks,
     onToggleTrajectoryTrack,
     onRemoveMetadata,
+    velocityColorPreset,
 }: OverlaySettingsPanelProps) {
     const visibleTrackNameSet = useMemo(() => new Set(visibleTrajectoryTrackNames), [visibleTrajectoryTrackNames]);
     const availableTrackNameSet = useMemo(() => new Set(availableTrajectoryTrackNames), [availableTrajectoryTrackNames]);
@@ -159,6 +162,29 @@ export function OverlaySettingsPanel({
                 </div>
             </div>
 
+            {showTrajectory && velocityColorPreset && (
+                <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                        Legend
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+                        {([
+                            { label: 'Slower Velocity', bgr: velocityColorPreset.slowBgr },
+                            { label: 'Average Velocity', bgr: velocityColorPreset.midBgr },
+                            { label: 'Faster Velocity', bgr: velocityColorPreset.fastBgr },
+                        ] as const).map(({ label, bgr }) => (
+                            <div key={label} className="flex items-center gap-2">
+                                <div
+                                    className="h-4 w-4 shrink-0 rounded-sm border border-black/10 dark:border-white/10"
+                                    style={{ backgroundColor: `rgb(${bgr[2]}, ${bgr[1]}, ${bgr[0]})` }}
+                                />
+                                <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-400">{label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {showTrajectory && (
                 <div>
                     <div className="mb-2 flex items-center justify-between">
@@ -176,9 +202,9 @@ export function OverlaySettingsPanel({
                         step={0.1}
                         value={trajectoryHistorySeconds}
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
-                        className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-cyan-600 hover:accent-cyan-700 dark:bg-gray-700"
+                        className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-amber-600 hover:accent-amber-700 dark:bg-gray-700"
                     />
-                    <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
+                    <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-amber-700 dark:text-amber-300">
                         <span>0.0s keeps the full history visible</span>
                         <span>Limit trail length client-side</span>
                     </div>
@@ -197,7 +223,7 @@ export function OverlaySettingsPanel({
                         <button
                             type="button"
                             onClick={allTracksVisible ? onHideAllTracks : onShowAllTracks}
-                            className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100 dark:border-cyan-900 dark:bg-cyan-950/50 dark:text-cyan-300"
+                            className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300"
                         >
                             {allTracksVisible ? 'Hide All' : 'Show All'}
                         </button>
@@ -206,12 +232,12 @@ export function OverlaySettingsPanel({
 
                 {availableTrajectoryTrackNames.length > 0 ? (
                     <fieldset className="space-y-4">
-                        <div className="relative h-88 w-full overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-b from-cyan-50 to-white px-4 py-5 dark:border-cyan-950/60 dark:from-cyan-950/20 dark:to-gray-900">
-                            <div className="pointer-events-none absolute left-1/2 top-[16%] h-[44%] w-px -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
-                            <div className="pointer-events-none absolute left-1/2 top-[26%] h-px w-[46%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
-                            <div className="pointer-events-none absolute left-1/2 top-[60%] h-px w-[22%] -translate-x-1/2 bg-cyan-200 dark:bg-cyan-900" />
-                            <div className="pointer-events-none absolute left-[40%] top-[60%] h-[24%] w-px bg-cyan-200 dark:bg-cyan-900" />
-                            <div className="pointer-events-none absolute left-[60%] top-[60%] h-[24%] w-px bg-cyan-200 dark:bg-cyan-900" />
+                        <div className="relative h-88 w-full overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-b from-amber-50 to-white px-4 py-5 dark:border-amber-950/60 dark:from-amber-950/20 dark:to-gray-900">
+                            <div className="pointer-events-none absolute left-1/2 top-[16%] h-[44%] w-px -translate-x-1/2 bg-amber-200 dark:bg-amber-900" />
+                            <div className="pointer-events-none absolute left-1/2 top-[26%] h-px w-[46%] -translate-x-1/2 bg-amber-200 dark:bg-amber-900" />
+                            <div className="pointer-events-none absolute left-1/2 top-[60%] h-px w-[22%] -translate-x-1/2 bg-amber-200 dark:bg-amber-900" />
+                            <div className="pointer-events-none absolute left-[40%] top-[60%] h-[24%] w-px bg-amber-200 dark:bg-amber-900" />
+                            <div className="pointer-events-none absolute left-[60%] top-[60%] h-[24%] w-px bg-amber-200 dark:bg-amber-900" />
 
                             {BODY_TRACK_LAYOUT.map((track) => {
                                 const isAvailable = availableTrackNameSet.has(track.trackName);
@@ -230,8 +256,8 @@ export function OverlaySettingsPanel({
                                         disabled={!isAvailable}
                                         className={`absolute min-w-26 rounded-full border px-3 py-2 text-center text-xs font-semibold shadow-sm transition-all ${track.className} ${isAvailable
                                             ? isVisible
-                                                ? 'border-cyan-500 bg-cyan-500 text-white shadow-cyan-200 dark:border-cyan-400 dark:bg-cyan-400 dark:text-cyan-950 dark:shadow-transparent'
-                                                : 'border-gray-200 bg-white text-gray-500 hover:border-cyan-300 hover:text-cyan-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-cyan-700 dark:hover:text-cyan-300'
+                                                ? 'border-amber-500 bg-amber-500 text-white shadow-amber-200 dark:border-amber-400 dark:bg-amber-400 dark:text-amber-950 dark:shadow-transparent'
+                                                : 'border-gray-200 bg-white text-gray-500 hover:border-amber-300 hover:text-amber-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-amber-700 dark:hover:text-amber-300'
                                             : 'cursor-not-allowed border-dashed border-gray-200 bg-gray-100 text-gray-400 shadow-none dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-500'
                                             }`}
                                     >

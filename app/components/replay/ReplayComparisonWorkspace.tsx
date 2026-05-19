@@ -16,7 +16,7 @@ import { useOverlaySettings } from '../../hooks/useOverlaySettings';
 import { useVideoControl } from '../../hooks/useVideoControl';
 import { useVideoFps } from '../../hooks/useVideoFps';
 import type { KeyMoment } from '../../lib/key-moments';
-import type { TrajectoryMetadata } from '../../lib/trajectory-types';
+import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajectory-types';
 import type { PresetComparison } from '../../lib/presets';
 
 export interface SplitViewContentProps {
@@ -73,6 +73,13 @@ export function ReplayComparisonWorkspace({
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const hasVideoByIndex: [boolean, boolean] = [Boolean(videoUrls[0]), Boolean(videoUrls[1])];
+
+    const velocityColorPreset = useMemo<VelocityColorPreset | null>(() => {
+        const meta = overlayMetadataByIndex[0] ?? overlayMetadataByIndex[1];
+        if (!meta) return null;
+        const presetName = meta.style.defaultVelocityColorPreset;
+        return meta.style.velocityColorPresets[presetName] ?? null;
+    }, [overlayMetadataByIndex]);
 
     const splitResetRef1 = useRef<(() => void) | null>(null);
     const splitResetRef2 = useRef<(() => void) | null>(null);
@@ -330,6 +337,7 @@ export function ReplayComparisonWorkspace({
                 onHideAllTracks={hideAllTrajectoryTracks}
                 onToggleTrajectoryTrack={toggleTrajectoryTrack}
                 onRemoveMetadata={onRemoveMetadata}
+                velocityColorPreset={velocityColorPreset}
             />
         </div>
     );
