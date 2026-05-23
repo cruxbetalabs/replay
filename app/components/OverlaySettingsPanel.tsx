@@ -162,28 +162,6 @@ export function OverlaySettingsPanel({
                 </div>
             </div>
 
-            {showTrajectory && velocityColorPreset && (
-                <div>
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                        Legend
-                    </p>
-                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
-                        {([
-                            { label: 'Slower Velocity', bgr: velocityColorPreset.slowBgr },
-                            { label: 'Average Velocity', bgr: velocityColorPreset.midBgr },
-                            { label: 'Faster Velocity', bgr: velocityColorPreset.fastBgr },
-                        ] as const).map(({ label, bgr }) => (
-                            <div key={label} className="flex items-center gap-2">
-                                <div
-                                    className="h-4 w-4 shrink-0 rounded-sm border border-black/10 dark:border-white/10"
-                                    style={{ backgroundColor: `rgb(${bgr[2]}, ${bgr[1]}, ${bgr[0]})` }}
-                                />
-                                <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-400">{label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {showTrajectory && (
                 <div>
@@ -191,7 +169,7 @@ export function OverlaySettingsPanel({
                         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             Trajectory History
                         </span>
-                        <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                        <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">
                             {trajectoryHistoryWindowSec == null ? 'Full trail' : `${trajectoryHistorySeconds.toFixed(1)}s`}
                         </span>
                     </div>
@@ -209,6 +187,23 @@ export function OverlaySettingsPanel({
                         <span>0.0s keeps the full history visible</span>
                         <span>Limit trail length client-side</span>
                     </div>
+                    {velocityColorPreset && (
+                        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+                            {([
+                                { label: 'Slower Velocity', bgr: velocityColorPreset.slowBgr },
+                                { label: 'Average Velocity', bgr: velocityColorPreset.midBgr },
+                                { label: 'Faster Velocity', bgr: velocityColorPreset.fastBgr },
+                            ] as const).map(({ label, bgr }) => (
+                                <div key={label} className="flex items-center gap-2">
+                                    <div
+                                        className="h-4 w-4 shrink-0 rounded-sm border border-black/10 dark:border-white/10"
+                                        style={{ backgroundColor: `rgb(${bgr[2]}, ${bgr[1]}, ${bgr[0]})` }}
+                                    />
+                                    <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-400">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
