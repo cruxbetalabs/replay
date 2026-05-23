@@ -5,7 +5,6 @@ import { RotateCcwIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { SidebarPanel } from './SidebarPanel';
 import type { VelocityColorPreset } from '../lib/trajectory-types';
-
 const BODY_TRACK_LAYOUT = [
     {
         trackName: 'head',
@@ -99,6 +98,7 @@ export function OverlaySettingsPanel({
         [availableTrajectoryTrackNames],
     );
     const allTracksVisible = availableTrajectoryTrackNames.length > 0 && hiddenTrajectoryTrackNames.length === 0;
+    const historyFillPercent = (trajectoryHistorySeconds / 5) * 100;
 
     return (
         <SidebarPanel
@@ -202,9 +202,10 @@ export function OverlaySettingsPanel({
                         step={0.1}
                         value={trajectoryHistorySeconds}
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
-                        className="h-3 w-full cursor-pointer appearance-none rounded-lg bg-gray-300 accent-amber-600 hover:accent-amber-700 dark:bg-gray-700"
+                        className="range-track-fill w-full"
+                        style={{ '--range-progress': `${historyFillPercent}%` } as React.CSSProperties}
                     />
-                    <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                    <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-300">
                         <span>0.0s keeps the full history visible</span>
                         <span>Limit trail length client-side</span>
                     </div>
