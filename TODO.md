@@ -1,9 +1,20 @@
-- [?] IK is still rough
-    - Branch propagation (useIKDrag.ts): after the normal neighborDist > jointDist BFS seeding, we explicitly add the shoulder sibling (if the displaced joint is a shoulder) into the same queue. The sibling gets the exact same (dx, dy) offset, and the inner BFS then propagates that offset further to the whole opposite arm as well (elbow → wrist → hand), since those are all at strictly greater anchor distances than the sibling shoulder.
-    - Why not a general >= rule? That would flood hips to each other (both at dist=0), causing the whole opposite leg to follow when dragging one hip. The sibling map keeps the fix surgical — only shoulder-to-shoulder.
-- [ ] when user is scrubbing the playback reset the psoe automatically
-- [ ] annotation timeline : allow anntoate with marker, select box (highlight) for certain range of clip, provide note of descrtion
-- [x] we have some preset exampel in `/public`, allow load preset comparisions
-- [ ] allow add problem context to the scene as well
-- [ ] segment human's body from the video as an addtional layer (reference: https://aidemos.meta.com/segment-anything)
-    - we will maybe provide a third view
+# Security hardening (optional)
+
+Follow-ups from the cloud feature security review. None are blockers for shipping.
+
+## Client-side
+
+- [ ] **Validate presigned URL hosts** — Before PUT/GET, check that `upload_url`, `video_url`, and `metadata_url` point to expected storage hosts (defense in depth on top of API trust).
+- [ ] **Tighten drag-drop job ID handling** — Drop the `text/plain` fallback in `readCloudJobDragId`; only accept the custom `application/x-replay-cloud-job` MIME type.
+
+## API / infrastructure (backend)
+
+- [ ] **Confirm IDOR protection** — Every job list/load/delete/upload operation validates session ownership.
+- [ ] **CORS + cookies** — Allow the GitHub Pages origin with credentials; same setup for SSE (`/events`).
+- [ ] **CSRF protection** — Cookie-authenticated POST/DELETE endpoints are protected.
+- [ ] **Presigned URLs** — Scoped, short-lived, and restricted to storage hosts only.
+- [ ] **Server-side upload limits** — Enforce type, size, and duration limits matching the client (500 MB, 2 min, `.mp4`/`.mov`).
+
+## Repo / DX
+
+- [ ] **Un-ignore `.env.local.example`** — Add `!.env.local.example` to `.gitignore` so the dev setup doc can be committed without exposing secrets.

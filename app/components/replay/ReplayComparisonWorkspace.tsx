@@ -18,6 +18,8 @@ import { useVideoFps } from '../../hooks/useVideoFps';
 import type { KeyMoment } from '../../lib/key-moments';
 import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajectory-types';
 import type { PresetComparison } from '../../lib/presets';
+import type { VideoIndex } from '../../lib/key-moments';
+import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
 
 export interface SplitViewContentProps {
     calculatingByIndex: [boolean, boolean];
@@ -48,6 +50,17 @@ interface ReplayComparisonWorkspaceProps {
     onLoadPreset?: (preset: PresetComparison) => void;
     presetKeyMomentsStamp?: string | null;
     presetKeyMomentsState?: { keyMoments: KeyMoment[]; selectedKeyMomentId: string | null } | null;
+    cloudEnabled?: boolean;
+    cloudBootstrapped?: boolean;
+    cloudJobs?: CloudJobSummary[];
+    cloudActiveUpload?: ActiveCloudUpload | null;
+    cloudInProgressCount?: number;
+    onCloudUpload?: (file: File) => Promise<void>;
+    onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDeleteCloudJob?: (jobId: string) => Promise<void>;
+    onRefreshCloudJobs?: () => void;
+    onClearCloudUpload?: () => void;
+    isLoadingCloudJob?: boolean;
 }
 
 export function ReplayComparisonWorkspace({
@@ -69,6 +82,17 @@ export function ReplayComparisonWorkspace({
     onLoadPreset,
     presetKeyMomentsStamp,
     presetKeyMomentsState,
+    cloudEnabled = false,
+    cloudBootstrapped = false,
+    cloudJobs = [],
+    cloudActiveUpload = null,
+    cloudInProgressCount = 0,
+    onCloudUpload,
+    onLoadCloudJob,
+    onDeleteCloudJob,
+    onRefreshCloudJobs,
+    onClearCloudUpload,
+    isLoadingCloudJob = false,
 }: ReplayComparisonWorkspaceProps) {
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -218,7 +242,7 @@ export function ReplayComparisonWorkspace({
 
     return (
         <div className="flex h-full w-full min-h-0 overflow-hidden bg-zinc-50 font-sans dark:bg-black">
-            <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+            <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} cloudEnabled={cloudEnabled} />
             <div className="flex-1 min-w-0 h-full flex flex-col p-5 gap-6 bg-white dark:bg-black">
                 <Tabs
                     value={resolvedViewMode}
@@ -239,6 +263,14 @@ export function ReplayComparisonWorkspace({
                             onOpenShortcuts={() => setShortcutsOpen(true)}
                             presets={presets}
                             onLoadPreset={onLoadPreset}
+                            cloudEnabled={cloudEnabled}
+                            cloudBootstrapped={cloudBootstrapped}
+                            cloudJobs={cloudJobs}
+                            cloudInProgressCount={cloudInProgressCount}
+                            onRefreshCloudJobs={onRefreshCloudJobs}
+                            onLoadCloudJob={onLoadCloudJob}
+                            onDeleteCloudJob={onDeleteCloudJob}
+                            isLoadingCloudJob={isLoadingCloudJob}
                         />
                         <div className="flex items-center gap-2">
                             <TabsList>
@@ -338,6 +370,15 @@ export function ReplayComparisonWorkspace({
                 onToggleTrajectoryTrack={toggleTrajectoryTrack}
                 onRemoveMetadata={onRemoveMetadata}
                 velocityColorPreset={velocityColorPreset}
+                cloudEnabled={cloudEnabled}
+                cloudBootstrapped={cloudBootstrapped}
+                cloudActiveUpload={cloudActiveUpload}
+                cloudJobs={cloudJobs}
+                onCloudUpload={onCloudUpload}
+                onLoadCloudJob={onLoadCloudJob}
+                onDeleteCloudJob={onDeleteCloudJob}
+                onClearCloudUpload={onClearCloudUpload}
+                isLoadingCloudJob={isLoadingCloudJob}
             />
         </div>
     );

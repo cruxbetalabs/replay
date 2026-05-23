@@ -4,8 +4,9 @@ import { OverlaySettingsPanel } from '../OverlaySettingsPanel';
 import { SwipeStatsPanel } from '../SwipeStatsPanel';
 import { VideoControlPanel } from '../VideoControlPanel';
 import { OnboardingContent } from './OnboardingContent';
-import type { KeyMoment } from '../../lib/key-moments';
+import type { KeyMoment, VideoIndex } from '../../lib/key-moments';
 import type { VelocityColorPreset } from '../../lib/trajectory-types';
+import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
 
 interface ReplayComparisonSidebarProps {
     // Video control
@@ -59,6 +60,15 @@ interface ReplayComparisonSidebarProps {
     onToggleTrajectoryTrack: (trackName: string) => void;
     onRemoveMetadata?: () => void;
     velocityColorPreset?: VelocityColorPreset | null;
+    cloudEnabled?: boolean;
+    cloudBootstrapped?: boolean;
+    cloudActiveUpload?: ActiveCloudUpload | null;
+    cloudJobs?: CloudJobSummary[];
+    onCloudUpload?: (file: File) => Promise<void>;
+    onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDeleteCloudJob?: (jobId: string) => Promise<void>;
+    onClearCloudUpload?: () => void;
+    isLoadingCloudJob?: boolean;
 }
 
 export function ReplayComparisonSidebar({
@@ -110,11 +120,32 @@ export function ReplayComparisonSidebar({
     onToggleTrajectoryTrack,
     onRemoveMetadata,
     velocityColorPreset,
+    cloudEnabled = false,
+    cloudBootstrapped = false,
+    cloudActiveUpload = null,
+    cloudJobs = [],
+    onCloudUpload,
+    onLoadCloudJob,
+    onDeleteCloudJob,
+    onClearCloudUpload,
+    isLoadingCloudJob = false,
 }: ReplayComparisonSidebarProps) {
     return (
         <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-700">
             <div className="flex flex-col">
-                {!hasVideos && <OnboardingContent />}
+                {!hasVideos && (
+                    <OnboardingContent
+                        cloudEnabled={cloudEnabled}
+                        cloudBootstrapped={cloudBootstrapped}
+                        cloudActiveUpload={cloudActiveUpload}
+                        cloudJobs={cloudJobs}
+                        onCloudUpload={onCloudUpload}
+                        onLoadCloudJob={onLoadCloudJob}
+                        onDeleteCloudJob={onDeleteCloudJob}
+                        onClearCloudUpload={onClearCloudUpload}
+                        isLoadingCloudJob={isLoadingCloudJob}
+                    />
+                )}
                 <VideoControlPanel
                     hasVideos={hasVideos}
                     hasVideo1={hasVideo1}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ExternalLinkIcon } from 'lucide-react';
 import {
     Menubar,
@@ -19,6 +19,12 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import type { PresetComparison } from '../../lib/presets';
+import type { VideoIndex } from '../../lib/key-moments';
+import type { CloudJobSummary } from '../../lib/replay-cloud/types';
+import { CloudJobsDialog } from './CloudJobsDialog';
+import { AltKeyShortcutLabel } from '../AltKeyShortcutLabel';
+import { isTypingTarget } from '../../hooks/useKeyboardShortcuts';
+import { matchesAltKeyShortcut } from '../../lib/keyboard-shortcut-labels';
 
 const GITHUB_URL = 'https://github.com/cruxbetalabs/replay';
 const COMPANY_URL = 'https://cruxbeta.dev';
@@ -66,6 +72,15 @@ interface ReplayMenubarProps {
     // Presets
     presets?: PresetComparison[];
     onLoadPreset?: (preset: PresetComparison) => void;
+    // Cloud
+    cloudEnabled?: boolean;
+    cloudBootstrapped?: boolean;
+    cloudJobs?: CloudJobSummary[];
+    cloudInProgressCount?: number;
+    onRefreshCloudJobs?: () => void;
+    onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDeleteCloudJob?: (jobId: string) => Promise<void>;
+    isLoadingCloudJob?: boolean;
 }
 
 export function ReplayMenubar({
@@ -81,13 +96,55 @@ export function ReplayMenubar({
     onOpenShortcuts,
     presets,
     onLoadPreset,
+    cloudEnabled = false,
+    cloudBootstrapped = false,
+    cloudJobs = [],
+    cloudInProgressCount = 0,
+    onRefreshCloudJobs,
+    onLoadCloudJob,
+    onDeleteCloudJob,
+    isLoadingCloudJob = false,
 }: ReplayMenubarProps) {
     const hasVideoControls = showRemoveVideos && (hasVideo1 || hasVideo2);
     const [aboutOpen, setAboutOpen] = useState(false);
+    const [cloudJobsOpen, setCloudJobsOpen] = useState(false);
+    const hasCloudMenu = cloudEnabled && onRefreshCloudJobs && onLoadCloudJob && onDeleteCloudJob;
+
+    useEffect(() => {
+        if (!hasCloudMenu) {
+            return;
+        }
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (isTypingTarget(event.target)) {
+                return;
+            }
+
+            if (matchesAltKeyShortcut(event, 'KeyC')) {
+                event.preventDefault();
+                setCloudJobsOpen((prev) => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [hasCloudMenu]);
 
     return (
         <>
             <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
+            {hasCloudMenu && (
+                <CloudJobsDialog
+                    open={cloudJobsOpen}
+                    onOpenChange={setCloudJobsOpen}
+                    jobs={cloudJobs}
+                    isBootstrapped={cloudBootstrapped}
+                    onRefresh={onRefreshCloudJobs}
+                    onLoadJob={onLoadCloudJob}
+                    onDeleteJob={onDeleteCloudJob}
+                    isLoadingCloudJob={isLoadingCloudJob}
+                />
+            )}
             <Menubar>
                 {/* Replay */}
                 <MenubarMenu>
@@ -152,6 +209,26 @@ export function ReplayMenubar({
                                     {preset.label}
                                 </MenubarItem>
                             ))}
+                        </MenubarContent>
+                    </MenubarMenu>
+                )}
+
+                {/* Cloud */}
+                {hasCloudMenu && (
+                    <MenubarMenu>
+                        <MenubarTrigger>
+                            Cloud
+                            {cloudInProgressCount > 0 && (
+                                <span className="ml-1.5 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                    {cloudInProgressCount}
+                                </span>
+                            )}
+                        </MenubarTrigger>
+                        <MenubarContent>
+                            <MenubarItem onSelect={() => setCloudJobsOpen(true)}>
+                                My uploads
+                                <AltKeyShortcutLabel keyLetter="C" variant="menubar" />
+                            </MenubarItem>
                         </MenubarContent>
                     </MenubarMenu>
                 )}

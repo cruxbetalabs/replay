@@ -1,0 +1,3 @@
+export const MAX_CLOUD_UPLOAD_BYTES = 524_288_000;
+export const MAX_CLOUD_DURATION_SECONDS = 120;
+export const CLOUD_RETENTION_DAYS = 7;

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, FileJson2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, FileJson2, FileVideo, Loader2, XCircle } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -12,9 +12,10 @@ import {
 export type PresetLoadFileRow = {
     key: string;
     fileName: string;
-    kind: 'metadata' | 'keymoments';
+    kind: 'video' | 'metadata' | 'keymoments';
     status: 'loading' | 'success' | 'error';
     error?: string;
+    progress?: number;
 };
 
 interface PresetLoadingDialogProps {
@@ -36,6 +37,7 @@ export function PresetLoadingDialog({
     return (
         <Dialog open={open} onOpenChange={(v) => { if (!v && !isLoading) onClose(); }}>
             <DialogContent
+                className="sm:max-w-md"
                 showCloseButton={!isLoading}
                 onEscapeKeyDown={(e) => { if (isLoading) e.preventDefault(); }}
                 onPointerDownOutside={(e) => { if (isLoading) e.preventDefault(); }}
@@ -57,12 +59,23 @@ export function PresetLoadingDialog({
                             key={row.key}
                             className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5"
                         >
-                            <FileJson2 className="h-4 w-4 shrink-0 text-gray-400" />
+                            {row.kind === 'video' ? (
+                                <FileVideo className="h-4 w-4 shrink-0 text-gray-400" />
+                            ) : (
+                                <FileJson2 className="h-4 w-4 shrink-0 text-gray-400" />
+                            )}
                             <span className="flex-1 truncate text-xs font-medium text-gray-700">
                                 {row.fileName}
                             </span>
                             {row.status === 'loading' && (
-                                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gray-400" />
+                                <div className="flex shrink-0 items-center gap-2">
+                                    {typeof row.progress === 'number' && (
+                                        <span className="text-xs tabular-nums text-gray-400">
+                                            {Math.round(row.progress * 100)}%
+                                        </span>
+                                    )}
+                                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gray-400" />
+                                </div>
                             )}
                             {row.status === 'success' && (
                                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />

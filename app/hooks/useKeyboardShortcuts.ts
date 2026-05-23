@@ -13,7 +13,7 @@ interface UseKeyboardShortcutsOptions {
     enabled?: boolean;
 }
 
-const isTypingTarget = (target: EventTarget | null) => {
+export const isTypingTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) {
         return false;
     }

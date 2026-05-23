@@ -11,13 +11,15 @@ import {
     CommandSeparator,
 } from '@/components/ui/command';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { AltKeyShortcutLabel } from './AltKeyShortcutLabel';
 
 interface KeyboardShortcutsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    cloudEnabled?: boolean;
 }
 
-export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcutsDialogProps) {
+export function KeyboardShortcutsDialog({ open, onOpenChange, cloudEnabled = false }: KeyboardShortcutsDialogProps) {
     return (
         <CommandDialog
             open={open}
@@ -75,6 +77,19 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
                             </KbdGroup>
                         </CommandItem>
                     </CommandGroup>
+
+                    {cloudEnabled && (
+                        <>
+                            <CommandSeparator />
+
+                            <CommandGroup heading="Cloud">
+                                <CommandItem>
+                                    <span className="flex-1">Toggle My uploads</span>
+                                    <AltKeyShortcutLabel keyLetter="C" />
+                                </CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
                 </CommandList>
             </Command>
         </CommandDialog>

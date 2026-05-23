@@ -7,6 +7,8 @@ import { StageToast, type ProcessResult } from './StageToast';
 import { StageReplaceConfirm } from './StageReplaceConfirm';
 import type { TrajectoryMetadata, VideoDimensions } from '../lib/trajectory-types';
 import { useIKDrag } from '../hooks/useIKDrag';
+import { hasCloudJobDrag, readCloudJobDragId } from '../lib/replay-cloud/drag';
+import { useCloudJobDragOptional } from './replay/CloudJobDragContext';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
@@ -108,6 +110,8 @@ type VideoDropzoneProps = {
     onRemoveTrajectory?: () => void;
     onVideoMetadataLoad?: (metadata: VideoDimensions) => void;
     resetIKRef?: React.MutableRefObject<(() => void) | null>;
+    videoIndex?: 0 | 1;
+    onCloudJobDrop?: (jobId: string, videoIndex: 0 | 1) => void;
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -130,6 +134,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             onRemoveTrajectory: _onRemoveTrajectory,
             onVideoMetadataLoad,
             resetIKRef,
+            videoIndex,
+            onCloudJobDrop,
         }: VideoDropzoneProps,
         ref,
     ) {
@@ -169,6 +175,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
 
         // ── Drop processing state ────────────────────────────────────────────
         const [isDraggingOver, setIsDraggingOver] = useState(false);
+        const [isCloudJobDraggingOver, setIsCloudJobDraggingOver] = useState(false);
         const [isProcessing, setIsProcessing] = useState(false);
         const [replaceConfirm, setReplaceConfirm] = useState<{
             file: File;
@@ -178,6 +185,12 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         const [toast, setToast] = useState<ProcessResult[] | null>(null);
 
         const dragCounterRef = useRef(0);
+        const cloudJobDrag = useCloudJobDragOptional();
+
+        const isActiveCloudJobDrag = useCallback((dataTransfer: DataTransfer) => {
+            return hasCloudJobDrag(dataTransfer)
+                || cloudJobDrag?.dragSessionRef.current !== null;
+        }, [cloudJobDrag?.dragSessionRef]);
 
         // Refs so processFiles always reads the latest prop values across awaits
         const videoUrlRef = useRef(videoUrl);
@@ -308,28 +321,51 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             dragCounterRef.current++;
-            setIsDraggingOver(true);
-        }, []);
+            if (isActiveCloudJobDrag(e.dataTransfer)) {
+                setIsCloudJobDraggingOver(true);
+            } else if (e.dataTransfer.types.includes('Files')) {
+                setIsDraggingOver(true);
+            }
+        }, [isActiveCloudJobDrag]);
 
         const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
             e.preventDefault();
             dragCounterRef.current--;
-            if (dragCounterRef.current === 0) setIsDraggingOver(false);
+            if (dragCounterRef.current === 0) {
+                setIsDraggingOver(false);
+                setIsCloudJobDraggingOver(false);
+            }
         }, []);
 
         const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
             e.preventDefault();
-        }, []);
+            if (isActiveCloudJobDrag(e.dataTransfer)) {
+                e.dataTransfer.dropEffect = 'copy';
+            }
+        }, [isActiveCloudJobDrag]);
 
         const handleDrop = useCallback(
             (e: React.DragEvent<HTMLDivElement>) => {
                 e.preventDefault();
                 dragCounterRef.current = 0;
                 setIsDraggingOver(false);
+                setIsCloudJobDraggingOver(false);
+
+                if (isActiveCloudJobDrag(e.dataTransfer)) {
+                    const jobId = readCloudJobDragId(e.dataTransfer)
+                        ?? cloudJobDrag?.dragSessionRef.current?.jobId
+                        ?? null;
+                    if (jobId && onCloudJobDrop && videoIndex !== undefined) {
+                        onCloudJobDrop(jobId, videoIndex);
+                        cloudJobDrag?.notifyDropSuccess();
+                    }
+                    return;
+                }
+
                 const files = Array.from(e.dataTransfer.files);
                 if (files.length > 0) void processFiles(files);
             },
-            [processFiles],
+            [cloudJobDrag, isActiveCloudJobDrag, onCloudJobDrop, processFiles, videoIndex],
         );
 
         // ── Click-to-upload ──────────────────────────────────────────────────
@@ -355,7 +391,27 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         function renderOverlays() {
             return (
                 <>
-                    {isDraggingOver && (
+                    {isCloudJobDraggingOver && (
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-blue-900/80 backdrop-blur-sm pointer-events-none">
+                            <svg
+                                className="h-10 w-10 text-white/70"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.5}
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                />
+                            </svg>
+                            <p className="text-base font-semibold text-white">Drop cloud upload</p>
+                            <p className="text-xs text-white/60">Loads video and metadata into {label}</p>
+                        </div>
+                    )}
+
+                    {isDraggingOver && !isCloudJobDraggingOver && (
                         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-cyan-900/80 backdrop-blur-sm pointer-events-none">
                             <svg
                                 className="h-10 w-10 text-white/70"
@@ -407,7 +463,9 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         // ── Render ───────────────────────────────────────────────────────────
         return (
             <div
-                className={`flex-1 h-full rounded-lg overflow-hidden bg-white flex items-center justify-center border-4 transition-colors ${isDraggingOver ? 'border-cyan-400' : 'border-gray-300'} ${className ?? ''}`.trim()}
+                data-video-dropzone=""
+                data-video-index={videoIndex}
+                className={`flex-1 h-full rounded-lg overflow-hidden bg-white flex items-center justify-center border-4 transition-colors ${isCloudJobDraggingOver ? 'border-blue-400' : isDraggingOver ? 'border-cyan-400' : 'border-gray-300'} ${className ?? ''}`.trim()}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}

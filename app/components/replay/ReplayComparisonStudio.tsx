@@ -4,12 +4,15 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { VideoDropzone } from '../VideoDropzone';
 import { ReplayComparisonWorkspace, type SplitViewContentProps } from './ReplayComparisonWorkspace';
+import { useReplayCloud } from '../../hooks/useReplayCloud';
 import { useTrajectoryState } from '../../hooks/useTrajectoryState';
 import { useVideoSources } from '../../hooks/useVideoSources';
 import { getKeyMomentStorageKey, type KeyMoment } from '../../lib/key-moments';
 import type { KeyMomentPresetState } from '../../lib/presets';
 import { PRESET_COMPARISONS, type PresetComparison } from '../../lib/presets';
+import type { VideoIndex } from '../../lib/key-moments';
 import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
+import { CloudJobDragProvider } from './CloudJobDragContext';
 
 interface ReplayComparisonStudioProps {
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
@@ -44,6 +47,20 @@ export function ReplayComparisonStudio({
         clearVideoDimensions,
     } = useTrajectoryState({ hasVideoByIndex });
 
+    const {
+        enabled: cloudEnabled,
+        isBootstrapped: cloudBootstrapped,
+        jobs: cloudJobs,
+        readyJobs: cloudReadyJobs,
+        activeUpload: cloudActiveUpload,
+        inProgressCount: cloudInProgressCount,
+        uploadVideo: uploadCloudVideo,
+        loadJobIntoSlot: loadCloudJobIntoSlot,
+        deleteJob: deleteCloudJob,
+        refreshJobs: refreshCloudJobs,
+        clearActiveUpload: clearCloudActiveUpload,
+    } = useReplayCloud();
+
     const keyMomentStorageKey = useMemo(() => getKeyMomentStorageKey(videoSources), [videoSources]);
 
     const handleReplaceVideo = useCallback((videoIndex: 0 | 1, file: File) => {
@@ -71,6 +88,58 @@ export function ReplayComparisonStudio({
     const [presetLoadOpen, setPresetLoadOpen] = useState(false);
     const [presetLoadLabel, setPresetLoadLabel] = useState('');
     const [presetLoadRows, setPresetLoadRows] = useState<PresetLoadFileRow[]>([]);
+    const isLoadingCloudJob = presetLoadOpen && presetLoadRows.some((row) => row.status === 'loading');
+
+    const handleLoadCloudJob = useCallback(async (jobId: string, videoIndex: VideoIndex) => {
+        const job = cloudJobs.find((entry) => entry.job_id === jobId)
+            ?? cloudReadyJobs.find((entry) => entry.job_id === jobId);
+        if (!job) {
+            return;
+        }
+
+        const metadataBaseName = job.original_filename.replace(/\.[^.]+$/, '') || 'cloud';
+        const metadataFileName = `${metadataBaseName}_trajectory_metadata.json`;
+
+        setPresetLoadLabel(`Video ${videoIndex + 1} · ${job.original_filename}`);
+        setPresetLoadRows([
+            { key: 'video', fileName: job.original_filename, kind: 'video', status: 'loading' },
+            { key: 'metadata', fileName: metadataFileName, kind: 'metadata', status: 'loading' },
+        ]);
+        setPresetLoadOpen(true);
+
+        const updateRow = (key: string, update: Partial<PresetLoadFileRow>) =>
+            setPresetLoadRows((prev) => prev.map((row) => row.key === key ? { ...row, ...update } : row));
+
+        try {
+            await loadCloudJobIntoSlot(jobId, videoIndex, {
+                clearVideoDimensions,
+                replaceVideoSource,
+                handleTrajectoryFile,
+            }, {
+                onFileProgress: (key, status, error) => {
+                    updateRow(key, {
+                        status,
+                        error,
+                        ...(status === 'success' ? { progress: 1 } : {}),
+                    });
+                },
+                onFileDownloadProgress: (key, progress) => {
+                    updateRow(key, { progress });
+                },
+            });
+
+            setTimeout(() => setPresetLoadOpen(false), 1200);
+        } catch {
+            // Row-level errors are already shown in the dialog.
+        }
+    }, [
+        clearVideoDimensions,
+        cloudJobs,
+        cloudReadyJobs,
+        handleTrajectoryFile,
+        loadCloudJobIntoSlot,
+        replaceVideoSource,
+    ]);
 
     const loadPreset = useCallback(async (preset: PresetComparison) => {
         clearVideoDimensions(0);
@@ -173,6 +242,8 @@ export function ReplayComparisonStudio({
                 label="Video 1"
                 videoUrl={videoUrl}
                 ref={videoRef}
+                videoIndex={0}
+                onCloudJobDrop={cloudEnabled ? handleLoadCloudJob : undefined}
                 onVideoFileDrop={(file) => handleReplaceVideo(0, file)}
                 onJsonFileDrop={(file) => handleTrajectoryFile(0, file)}
                 isCalculating={calculatingByIndex[0]}
@@ -190,6 +261,8 @@ export function ReplayComparisonStudio({
                 label="Video 2"
                 videoUrl={videoUrl2}
                 ref={videoRef2}
+                videoIndex={1}
+                onCloudJobDrop={cloudEnabled ? handleLoadCloudJob : undefined}
                 onVideoFileDrop={(file) => handleReplaceVideo(1, file)}
                 onJsonFileDrop={(file) => handleTrajectoryFile(1, file)}
                 isCalculating={calculatingByIndex[1]}
@@ -207,6 +280,8 @@ export function ReplayComparisonStudio({
     ), [
         canRenderOverlayByIndex,
         clearTrajectory,
+        cloudEnabled,
+        handleLoadCloudJob,
         handleReplaceVideo,
         handleTrajectoryFile,
         overlayMetadataByIndex,
@@ -219,8 +294,9 @@ export function ReplayComparisonStudio({
     ]);
 
     return (
-        <>
-            <ReplayComparisonWorkspace
+        <CloudJobDragProvider>
+            <>
+                <ReplayComparisonWorkspace
                 splitViewContent={splitViewContent}
                 videoRefs={videoRefs}
                 videoUrls={videoUrls}
@@ -239,6 +315,17 @@ export function ReplayComparisonStudio({
                 onLoadPreset={loadPreset}
                 presetKeyMomentsStamp={presetKeyMomentsStamp}
                 presetKeyMomentsState={presetKeyMomentsState}
+                cloudEnabled={cloudEnabled}
+                cloudBootstrapped={cloudBootstrapped}
+                cloudJobs={cloudJobs}
+                cloudActiveUpload={cloudActiveUpload}
+                cloudInProgressCount={cloudInProgressCount}
+                onCloudUpload={uploadCloudVideo}
+                onLoadCloudJob={handleLoadCloudJob}
+                onDeleteCloudJob={deleteCloudJob}
+                onRefreshCloudJobs={refreshCloudJobs}
+                onClearCloudUpload={clearCloudActiveUpload}
+                isLoadingCloudJob={isLoadingCloudJob}
             />
             <PresetLoadingDialog
                 open={presetLoadOpen}
@@ -246,6 +333,7 @@ export function ReplayComparisonStudio({
                 rows={presetLoadRows}
                 onClose={() => setPresetLoadOpen(false)}
             />
-        </>
+            </>
+        </CloudJobDragProvider>
     );
 }
