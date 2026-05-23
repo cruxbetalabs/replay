@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 const DEFAULT_TRAJECTORY_HISTORY_SECONDS = 0.5;
 
@@ -14,15 +14,16 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
     const [trajectoryHistorySeconds, setTrajectoryHistorySeconds] = useState<number>(DEFAULT_TRAJECTORY_HISTORY_SECONDS);
     const [hiddenTrajectoryTrackNames, setHiddenTrajectoryTrackNames] = useState<string[]>([]);
 
-    useEffect(() => {
-        setHiddenTrajectoryTrackNames((prev) => prev.filter((trackName) => availableTrajectoryTrackNames.includes(trackName)));
-    }, [availableTrajectoryTrackNames]);
-
     const trajectoryHistoryWindowSec = trajectoryHistorySeconds <= 0 ? null : trajectoryHistorySeconds;
 
+    const effectiveHiddenTrajectoryTrackNames = useMemo(
+        () => hiddenTrajectoryTrackNames.filter((trackName) => availableTrajectoryTrackNames.includes(trackName)),
+        [availableTrajectoryTrackNames, hiddenTrajectoryTrackNames],
+    );
+
     const visibleTrajectoryTrackNames = useMemo(() => (
-        availableTrajectoryTrackNames.filter((trackName) => !hiddenTrajectoryTrackNames.includes(trackName))
-    ), [availableTrajectoryTrackNames, hiddenTrajectoryTrackNames]);
+        availableTrajectoryTrackNames.filter((trackName) => !effectiveHiddenTrajectoryTrackNames.includes(trackName))
+    ), [availableTrajectoryTrackNames, effectiveHiddenTrajectoryTrackNames]);
 
     const toggleTrajectoryTrack = useCallback((trackName: string) => {
         setHiddenTrajectoryTrackNames((prev) => (

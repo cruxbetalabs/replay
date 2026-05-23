@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { Pos2D } from '../lib/pose-ik';
 import type {
@@ -242,10 +242,12 @@ export function TrajectoryOverlay({
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const landmarkOverridesRef = useRef<Map<number, Pos2D> | null>(null);
-    landmarkOverridesRef.current = landmarkOverrides;
-
     const pinnedJointsRef = useRef<ReadonlySet<number> | null>(null);
-    pinnedJointsRef.current = pinnedJoints;
+
+    useLayoutEffect(() => {
+        landmarkOverridesRef.current = landmarkOverrides;
+        pinnedJointsRef.current = pinnedJoints;
+    }, [landmarkOverrides, pinnedJoints]);
 
     // A ref to `renderOnce` so the override-change effect can trigger a repaint
     // without adding `landmarkOverrides` to the main effect's dep array.

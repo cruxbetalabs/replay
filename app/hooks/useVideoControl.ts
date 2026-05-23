@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
 interface UseVideoControlOptions {
@@ -30,6 +30,11 @@ export function useVideoControl({
     const pendingTime2Ref = useRef<number | null>(null);
     const seekRaf1Ref = useRef<number>(0);
     const seekRaf2Ref = useRef<number>(0);
+    const videoRefsRef = useRef(videoRefs);
+
+    useLayoutEffect(() => {
+        videoRefsRef.current = videoRefs;
+    }, [videoRefs]);
 
     // Cancel any outstanding rAF seek requests on unmount.
     useEffect(() => () => {
@@ -37,62 +42,64 @@ export function useVideoControl({
         cancelAnimationFrame(seekRaf2Ref.current);
     }, []);
 
-    const seekTo1 = useCallback((newTime: number) => {
-        const video = videoRefs[0]?.current ?? null;
+    const scheduleSeek = useCallback((videoIndex: 0 | 1, newTime: number) => {
+        const video = videoRefsRef.current[videoIndex]?.current ?? null;
         if (!video) return;
-        // Update React state immediately so the slider stays at the dragged position.
-        setCurrentTime1(newTime);
-        // Coalesce the actual video seek — only the most recent value matters.
-        pendingTime1Ref.current = newTime;
-        if (!seekRaf1Ref.current) {
-            seekRaf1Ref.current = requestAnimationFrame(() => {
-                seekRaf1Ref.current = 0;
-                if (pendingTime1Ref.current !== null) {
-                    video.currentTime = pendingTime1Ref.current;
-                    pendingTime1Ref.current = null;
+
+        if (videoIndex === 0) {
+            setCurrentTime1(newTime);
+        } else {
+            setCurrentTime2(newTime);
+        }
+
+        const pendingRef = videoIndex === 0 ? pendingTime1Ref : pendingTime2Ref;
+        const seekRafRef = videoIndex === 0 ? seekRaf1Ref : seekRaf2Ref;
+
+        pendingRef.current = newTime;
+        if (!seekRafRef.current) {
+            seekRafRef.current = requestAnimationFrame(() => {
+                seekRafRef.current = 0;
+                const el = videoRefsRef.current[videoIndex]?.current;
+                if (el && pendingRef.current !== null) {
+                    el.currentTime = pendingRef.current;
+                    pendingRef.current = null;
                 }
             });
         }
-    }, [videoRefs]);
+    }, []);
+
+    const seekTo1 = useCallback((newTime: number) => {
+        scheduleSeek(0, newTime);
+    }, [scheduleSeek]);
 
     const seekTo2 = useCallback((newTime: number) => {
-        const video2 = videoRefs[1]?.current ?? null;
-        if (!video2) return;
-        setCurrentTime2(newTime);
-        pendingTime2Ref.current = newTime;
-        if (!seekRaf2Ref.current) {
-            seekRaf2Ref.current = requestAnimationFrame(() => {
-                seekRaf2Ref.current = 0;
-                if (pendingTime2Ref.current !== null) {
-                    video2.currentTime = pendingTime2Ref.current;
-                    pendingTime2Ref.current = null;
-                }
-            });
-        }
-    }, [videoRefs]);
+        scheduleSeek(1, newTime);
+    }, [scheduleSeek]);
 
     useEffect(() => {
         if (direction === 'none') return;
 
-        const video = videoRefs[0]?.current ?? null;
-        const video2 = videoRefs[1]?.current ?? null;
-        if (!video && !video2) return;
+        const videoEl = videoRefsRef.current[0]?.current ?? null;
+        const videoEl2 = videoRefsRef.current[1]?.current ?? null;
+        if (!videoEl && !videoEl2) return;
 
         const seekAmount = fps ? 1 / fps : 1 / 30;
         const delta = direction === 'right' ? seekAmount : -seekAmount;
 
-        if (video && video.duration) {
-            let newTime = video.currentTime + delta;
-            newTime = Math.max(0, Math.min(newTime, video.duration));
-            video.currentTime = newTime;
-        }
+        queueMicrotask(() => {
+            if (videoEl && videoEl.duration) {
+                let newTime = videoEl.currentTime + delta;
+                newTime = Math.max(0, Math.min(newTime, videoEl.duration));
+                scheduleSeek(0, newTime);
+            }
 
-        if (video2 && video2.duration) {
-            let newTime = video2.currentTime + delta;
-            newTime = Math.max(0, Math.min(newTime, video2.duration));
-            video2.currentTime = newTime;
-        }
-    }, [direction, movement, fps, videoRefs]);
+            if (videoEl2 && videoEl2.duration) {
+                let newTime = videoEl2.currentTime + delta;
+                newTime = Math.max(0, Math.min(newTime, videoEl2.duration));
+                scheduleSeek(1, newTime);
+            }
+        });
+    }, [direction, movement, fps, scheduleSeek]);
 
     useEffect(() => {
         const video = videoRefs[0]?.current ?? null;

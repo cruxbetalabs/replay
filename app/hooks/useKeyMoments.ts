@@ -85,6 +85,24 @@ export function useKeyMoments({
     const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
     const [selectedKeyMomentId, setSelectedKeyMomentId] = useState<string | null>(null);
 
+    const resolvedActivePlaybackSliderIndex = useMemo<VideoIndex | null>(() => {
+        if (activePlaybackSliderIndex === 0 && !hasVideoByIndex[0]) {
+            return hasVideoByIndex[1] ? 1 : null;
+        }
+
+        if (activePlaybackSliderIndex === 1 && !hasVideoByIndex[1]) {
+            return hasVideoByIndex[0] ? 0 : null;
+        }
+
+        if (activePlaybackSliderIndex == null) {
+            if (hasVideoByIndex[0]) return 0;
+            if (hasVideoByIndex[1]) return 1;
+            return null;
+        }
+
+        return activePlaybackSliderIndex;
+    }, [activePlaybackSliderIndex, hasVideoByIndex]);
+
     const pauseVideos = useCallback(() => {
         videoRefs[0].current?.pause();
         videoRefs[1].current?.pause();
@@ -184,14 +202,16 @@ export function useKeyMoments({
         }
 
         const persistedState = parsePersistedKeyMomentState(window.localStorage.getItem(persistenceKey) ?? '');
-        if (!persistedState) {
-            setKeyMoments([]);
-            setSelectedKeyMomentId(null);
-            return;
-        }
+        queueMicrotask(() => {
+            if (!persistedState) {
+                setKeyMoments([]);
+                setSelectedKeyMomentId(null);
+                return;
+            }
 
-        setKeyMoments(persistedState.keyMoments);
-        setSelectedKeyMomentId(persistedState.selectedKeyMomentId);
+            setKeyMoments(persistedState.keyMoments);
+            setSelectedKeyMomentId(persistedState.selectedKeyMomentId);
+        });
     }, [persistenceKey]);
 
     useEffect(() => {
@@ -212,29 +232,6 @@ export function useKeyMoments({
         onKeyMomentsChange?.(keyMoments);
     }, [keyMoments, onKeyMomentsChange]);
 
-    useEffect(() => {
-        if (activePlaybackSliderIndex === 0 && !hasVideoByIndex[0]) {
-            setActivePlaybackSliderIndex(hasVideoByIndex[1] ? 1 : null);
-            return;
-        }
-
-        if (activePlaybackSliderIndex === 1 && !hasVideoByIndex[1]) {
-            setActivePlaybackSliderIndex(hasVideoByIndex[0] ? 0 : null);
-            return;
-        }
-
-        if (activePlaybackSliderIndex == null) {
-            if (hasVideoByIndex[0]) {
-                setActivePlaybackSliderIndex(0);
-                return;
-            }
-
-            if (hasVideoByIndex[1]) {
-                setActivePlaybackSliderIndex(1);
-            }
-        }
-    }, [activePlaybackSliderIndex, hasVideoByIndex]);
-
     const keyMomentShortcuts = useMemo<KeyboardShortcut[]>(() => keyMoments.slice(0, 9).map((keyMoment, index) => ({
         key: String(index + 1),
         onTrigger: () => jumpToKeyMoment(keyMoment.id),
@@ -244,12 +241,12 @@ export function useKeyMoments({
         key: 'n',
         enabled: Boolean(hasVideoByIndex[0] || hasVideoByIndex[1]),
         onTrigger: () => {
-            if (activePlaybackSliderIndex === 0 && hasVideoByIndex[0]) {
+            if (resolvedActivePlaybackSliderIndex === 0 && hasVideoByIndex[0]) {
                 createKeyMomentFromVideo(0);
                 return;
             }
 
-            if (activePlaybackSliderIndex === 1 && hasVideoByIndex[1]) {
+            if (resolvedActivePlaybackSliderIndex === 1 && hasVideoByIndex[1]) {
                 createKeyMomentFromVideo(1);
                 return;
             }
@@ -263,7 +260,7 @@ export function useKeyMoments({
                 createKeyMomentFromVideo(1);
             }
         },
-    }), [activePlaybackSliderIndex, createKeyMomentFromVideo, hasVideoByIndex]);
+    }), [resolvedActivePlaybackSliderIndex, createKeyMomentFromVideo, hasVideoByIndex]);
 
     const deselectKeyMoment = useCallback(() => {
         setSelectedKeyMomentId(null);
@@ -275,7 +272,7 @@ export function useKeyMoments({
     }, []);
 
     return {
-        activePlaybackSliderIndex,
+        activePlaybackSliderIndex: resolvedActivePlaybackSliderIndex,
         keyMoments,
         selectedKeyMomentId,
         setActivePlaybackSliderIndex,

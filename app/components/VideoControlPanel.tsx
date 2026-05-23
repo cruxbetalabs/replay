@@ -72,6 +72,7 @@ export function VideoControlPanel({
     onRemoveVideo2,
     onRemoveMetadata,
 }: VideoControlPanelProps) {
+
     if (!hasVideos) return null;
 
     const selectedKeyMoment = selectedKeyMomentId
@@ -164,6 +165,8 @@ export function VideoControlPanel({
                     />
                 )}
             </div>
+
+            {/* Annotation card — shown when a key moment is selected and annotation mode is on */}
         </SidebarPanel>
     );
 }

@@ -230,6 +230,7 @@ export function ReplayComparisonStudio({
                 hasAnyOverlayData={hasAnyOverlayData}
                 hasPoseMetadata={hasPoseMetadata}
                 storageKey={keyMomentStorageKey}
+                videoSources={videoSources}
                 showRemoveVideos
                 onRemoveVideo1={handleRemoveVideo1}
                 onRemoveVideo2={handleRemoveVideo2}

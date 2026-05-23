@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { CloudUpload, FileJson2, FileVideo } from 'lucide-react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import { StageToast, type ProcessResult } from './StageToast';
 import { StageReplaceConfirm } from './StageReplaceConfirm';
 import type { TrajectoryMetadata, VideoDimensions } from '../lib/trajectory-types';
+
 import { useIKDrag } from '../hooks/useIKDrag';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -181,9 +182,12 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
 
         // Refs so processFiles always reads the latest prop values across awaits
         const videoUrlRef = useRef(videoUrl);
-        videoUrlRef.current = videoUrl;
         const trajectoryFileNameRef = useRef(trajectoryFileName);
-        trajectoryFileNameRef.current = trajectoryFileName;
+
+        useLayoutEffect(() => {
+            videoUrlRef.current = videoUrl;
+            trajectoryFileNameRef.current = trajectoryFileName;
+        }, [videoUrl, trajectoryFileName]);
 
         // ── Replace confirm prompt ───────────────────────────────────────────
         const promptReplaceConfirm = useCallback(

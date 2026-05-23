@@ -1,3 +1,4 @@
+
 export type VideoIndex = 0 | 1;
 
 export interface VideoSourceIdentity {
@@ -14,6 +15,7 @@ export interface KeyMomentPosition {
 
 export interface KeyMoment {
     id: string;
+    /** Start positions — one per video slot. */
     positions: [KeyMomentPosition | null, KeyMomentPosition | null];
 }
 
