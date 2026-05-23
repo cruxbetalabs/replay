@@ -202,7 +202,7 @@ export function OverlaySettingsPanel({
                         step={0.1}
                         value={trajectoryHistorySeconds}
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
-                        className="range-track-fill w-full"
+                        className="h-2 range-track-fill w-full"
                         style={{ '--range-progress': `${historyFillPercent}%` } as React.CSSProperties}
                     />
                     <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-300">
