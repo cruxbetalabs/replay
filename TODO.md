@@ -1,6 +1,5 @@
 - [?] IK is still rough
-    - Branch propagation (useIKDrag.ts): after the normal neighborDist > jointDist BFS seeding, we explicitly add the shoulder sibling (if the displaced joint is a shoulder) into the same queue. The sibling gets the exact same (dx, dy) offset, and the inner BFS then propagates that offset further to the whole opposite arm as well (elbow → wrist → hand), since those are all at strictly greater anchor distances than the sibling shoulder.
-    - Why not a general >= rule? That would flood hips to each other (both at dist=0), causing the whole opposite leg to follow when dragging one hip. The sibling map keeps the fix surgical — only shoulder-to-shoulder.
+    - Limbs are not stretchable (no true 3D estiamtion yet)
 - [ ] when user is scrubbing the playback reset the psoe automatically
 - [ ] annotation timeline : allow anntoate with marker, select box (highlight) for certain range of clip, provide note of descrtion
 - [x] we have some preset exampel in `/public`, allow load preset comparisions

@@ -10,12 +10,15 @@ import { ReplayMenubar } from './ReplayMenubar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useComparisonShortcuts } from '../../hooks/useComparisonShortcuts';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useAnnotations } from '../../hooks/useAnnotations';
 import { useKeyMoments } from '../../hooks/useKeyMoments';
 import { useMouseControl } from '../../hooks/useMouseControl';
 import { useOverlaySettings } from '../../hooks/useOverlaySettings';
 import { useVideoControl } from '../../hooks/useVideoControl';
 import { useVideoFps } from '../../hooks/useVideoFps';
 import type { KeyMoment } from '../../lib/key-moments';
+import { buildAnnotationExport, downloadAnnotationExport } from '../../lib/annotations';
+import { getVideoSourceFingerprint } from '../../lib/key-moments';
 import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajectory-types';
 import type { PresetComparison } from '../../lib/presets';
 
@@ -33,6 +36,7 @@ interface ReplayComparisonWorkspaceProps {
     splitViewContent: (props: SplitViewContentProps) => ReactNode;
     videoRefs: [RefObject<HTMLVideoElement | null>, RefObject<HTMLVideoElement | null>];
     videoUrls: [string | null, string | null];
+    videoSources?: [import('../../lib/key-moments').VideoSourceIdentity | null, import('../../lib/key-moments').VideoSourceIdentity | null];
     overlayMetadataByIndex: [TrajectoryMetadata | null, TrajectoryMetadata | null];
     canRenderOverlayByIndex: [boolean, boolean];
     availableTrajectoryTrackNames: string[];
@@ -54,6 +58,7 @@ export function ReplayComparisonWorkspace({
     splitViewContent,
     videoRefs,
     videoUrls,
+    videoSources,
     overlayMetadataByIndex,
     canRenderOverlayByIndex,
     availableTrajectoryTrackNames,
@@ -72,6 +77,7 @@ export function ReplayComparisonWorkspace({
 }: ReplayComparisonWorkspaceProps) {
     const [viewMode, setViewMode] = useState<'split' | 'overlay'>('split');
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [annotationMode, setAnnotationMode] = useState(false);
     const hasVideoByIndex: [boolean, boolean] = [Boolean(videoUrls[0]), Boolean(videoUrls[1])];
 
     const velocityColorPreset = useMemo<VelocityColorPreset | null>(() => {
@@ -86,11 +92,11 @@ export function ReplayComparisonWorkspace({
     const overlayResetRef = useRef<(() => void) | null>(null);
     const resetIKRefs: [MutableRefObject<(() => void) | null>, MutableRefObject<(() => void) | null>] = [splitResetRef1, splitResetRef2];
 
-    const handleResetPose = useCallback(() => {
+    const handleResetPose = () => {
         splitResetRef1.current?.();
         splitResetRef2.current?.();
         overlayResetRef.current?.();
-    }, []);
+    };
 
     const { boxRef, direction, speed, movement, controlMode } = useMouseControl({ controlMode: 'both' });
     const { fps, fpsByIndex, calculatingByIndex } = useVideoFps({
@@ -136,6 +142,17 @@ export function ReplayComparisonWorkspace({
     });
 
     const {
+        annotations,
+        selectedAnnotationId,
+        setSelectedAnnotationId,
+        createAnnotation,
+        deleteAnnotation,
+        updateAnnotationRange,
+        toggleAnnotationLabel,
+        setAnnotationNotes,
+    } = useAnnotations({ persistenceKey: storageKey, fps1, fps2 });
+
+    const {
         showTrajectory,
         showPose,
         trajectoryHistorySeconds,
@@ -166,6 +183,17 @@ export function ReplayComparisonWorkspace({
     const handleSetViewMode = useCallback((nextViewMode: 'split' | 'overlay') => {
         setViewMode(nextViewMode === 'overlay' && !hasAnyOverlayData ? 'split' : nextViewMode);
     }, [hasAnyOverlayData]);
+
+    const handleToggleAnnotationMode = useCallback(() => setAnnotationMode((prev) => !prev), []);
+
+    const hasAnnotations = annotations.length > 0;
+
+    const handleExportAnnotations = useCallback((videoIndex: 0 | 1) => {
+        const source = videoSources?.[videoIndex] ?? null;
+        const videoId = source ? getVideoSourceFingerprint(source) : `video-${videoIndex}`;
+        const data = buildAnnotationExport(videoId, videoIndex, annotations);
+        downloadAnnotationExport(data);
+    }, [annotations, videoSources]);
 
     const { shortcuts, enabled: areShortcutsEnabled } = useComparisonShortcuts({
         addKeyShortcut,
@@ -239,6 +267,11 @@ export function ReplayComparisonWorkspace({
                             onOpenShortcuts={() => setShortcutsOpen(true)}
                             presets={presets}
                             onLoadPreset={onLoadPreset}
+                            annotationMode={annotationMode}
+                            onToggleAnnotationMode={handleToggleAnnotationMode}
+                            hasAnnotations={hasAnnotations}
+                            onExportAnnotations1={hasVideoByIndex[0] ? () => handleExportAnnotations(0) : undefined}
+                            onExportAnnotations2={hasVideoByIndex[1] ? () => handleExportAnnotations(1) : undefined}
                         />
                         <div className="flex items-center gap-2">
                             <TabsList>
@@ -319,8 +352,6 @@ export function ReplayComparisonWorkspace({
                 showRemoveVideos={showRemoveVideos}
                 onRemoveVideo1={onRemoveVideo1}
                 onRemoveVideo2={onRemoveVideo2}
-                direction={direction}
-                speed={speed}
                 hasAnyOverlayData={hasAnyOverlayData}
                 trajectoryHistorySeconds={trajectoryHistorySeconds}
                 trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
@@ -338,6 +369,17 @@ export function ReplayComparisonWorkspace({
                 onToggleTrajectoryTrack={toggleTrajectoryTrack}
                 onRemoveMetadata={onRemoveMetadata}
                 velocityColorPreset={velocityColorPreset}
+                annotations={annotations}
+                selectedAnnotationId={selectedAnnotationId}
+                onSelectAnnotation={setSelectedAnnotationId}
+                onDeselectAnnotation={() => setSelectedAnnotationId(null)}
+                onCreateAnnotation1={() => createAnnotation(0, currentTime1)}
+                onCreateAnnotation2={() => createAnnotation(1, currentTime2)}
+                onDeleteAnnotation={deleteAnnotation}
+                onUpdateAnnotationRange={updateAnnotationRange}
+                onToggleAnnotationLabel={toggleAnnotationLabel}
+                onSetAnnotationNotes={setAnnotationNotes}
+                onSeekVideo={(videoIndex, time) => videoIndex === 0 ? seekTo1(time) : seekTo2(time)}
             />
         </div>
     );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ExternalLinkIcon } from 'lucide-react';
 import {
     Menubar,
+    MenubarCheckboxItem,
     MenubarContent,
     MenubarItem,
     MenubarMenu,
@@ -66,6 +67,12 @@ interface ReplayMenubarProps {
     // Presets
     presets?: PresetComparison[];
     onLoadPreset?: (preset: PresetComparison) => void;
+    // Annotations
+    annotationMode: boolean;
+    onToggleAnnotationMode: () => void;
+    hasAnnotations?: boolean;
+    onExportAnnotations1?: () => void;
+    onExportAnnotations2?: () => void;
 }
 
 export function ReplayMenubar({
@@ -81,6 +88,11 @@ export function ReplayMenubar({
     onOpenShortcuts,
     presets,
     onLoadPreset,
+    annotationMode,
+    onToggleAnnotationMode,
+    hasAnnotations = false,
+    onExportAnnotations1,
+    onExportAnnotations2,
 }: ReplayMenubarProps) {
     const hasVideoControls = showRemoveVideos && (hasVideo1 || hasVideo2);
     const [aboutOpen, setAboutOpen] = useState(false);
@@ -155,6 +167,34 @@ export function ReplayMenubar({
                         </MenubarContent>
                     </MenubarMenu>
                 )}
+
+                {/* Annotate */}
+                <MenubarMenu>
+                    <MenubarTrigger>Annotate</MenubarTrigger>
+                    <MenubarContent>
+                        <MenubarCheckboxItem
+                            checked={annotationMode}
+                            onCheckedChange={onToggleAnnotationMode}
+                        >
+                            Annotation Mode
+                        </MenubarCheckboxItem>
+                        {hasAnnotations && (hasVideo1 || hasVideo2) && (
+                            <>
+                                <MenubarSeparator />
+                                {hasVideo1 && onExportAnnotations1 && (
+                                    <MenubarItem onSelect={onExportAnnotations1}>
+                                        Export Video 1 Annotations
+                                    </MenubarItem>
+                                )}
+                                {hasVideo2 && onExportAnnotations2 && (
+                                    <MenubarItem onSelect={onExportAnnotations2}>
+                                        Export Video 2 Annotations
+                                    </MenubarItem>
+                                )}
+                            </>
+                        )}
+                    </MenubarContent>
+                </MenubarMenu>
 
                 {/* Help */}
                 <MenubarMenu>

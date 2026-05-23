@@ -12,6 +12,7 @@ import { PRESET_COMPARISONS, type PresetComparison } from '../../lib/presets';
 import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
 
 interface ReplayComparisonStudioProps {
+    // trigger callback when key moments change
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
 }
 
@@ -230,6 +231,7 @@ export function ReplayComparisonStudio({
                 hasAnyOverlayData={hasAnyOverlayData}
                 hasPoseMetadata={hasPoseMetadata}
                 storageKey={keyMomentStorageKey}
+                videoSources={videoSources}
                 showRemoveVideos
                 onRemoveVideo1={handleRemoveVideo1}
                 onRemoveVideo2={handleRemoveVideo2}

@@ -101,6 +101,8 @@ function useResolvedSourceVideoUrls(sources: [ReplayComparisonSource | null, Rep
             return typeof video === 'string' ? video : null;
         }) as [string | null, string | null];
 
+        // Sync blob object URLs when source videos change.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- derive URLs from props with cleanup below
         setVideoUrls(nextUrls);
 
         return () => {

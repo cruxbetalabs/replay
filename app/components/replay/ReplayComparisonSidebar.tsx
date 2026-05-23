@@ -1,10 +1,11 @@
 'use client';
 
 import { OverlaySettingsPanel } from '../OverlaySettingsPanel';
-import { SwipeStatsPanel } from '../SwipeStatsPanel';
 import { VideoControlPanel } from '../VideoControlPanel';
+import { AnnotationPanel } from '../AnnotationPanel';
 import { OnboardingContent } from './OnboardingContent';
 import type { KeyMoment } from '../../lib/key-moments';
+import type { Annotation, AnnotationLabelGroup } from '../../lib/annotations';
 import type { VelocityColorPreset } from '../../lib/trajectory-types';
 
 interface ReplayComparisonSidebarProps {
@@ -38,9 +39,6 @@ interface ReplayComparisonSidebarProps {
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
-    // Swipe stats
-    direction: 'left' | 'right' | 'none';
-    speed: number;
     // Overlay settings
     hasAnyOverlayData: boolean;
     trajectoryHistorySeconds: number;
@@ -59,6 +57,18 @@ interface ReplayComparisonSidebarProps {
     onToggleTrajectoryTrack: (trackName: string) => void;
     onRemoveMetadata?: () => void;
     velocityColorPreset?: VelocityColorPreset | null;
+    // Annotations
+    annotations: Annotation[];
+    selectedAnnotationId: string | null;
+    onSelectAnnotation: (id: string) => void;
+    onDeselectAnnotation: () => void;
+    onCreateAnnotation1: () => void;
+    onCreateAnnotation2: () => void;
+    onDeleteAnnotation: (id: string) => void;
+    onUpdateAnnotationRange: (id: string, startTime: number, endTime: number) => void;
+    onToggleAnnotationLabel: (id: string, group: AnnotationLabelGroup, label: string) => void;
+    onSetAnnotationNotes: (id: string, notes: string) => void;
+    onSeekVideo: (videoIndex: 0 | 1, time: number) => void;
 }
 
 export function ReplayComparisonSidebar({
@@ -91,8 +101,6 @@ export function ReplayComparisonSidebar({
     showRemoveVideos,
     onRemoveVideo1,
     onRemoveVideo2,
-    direction,
-    speed,
     trajectoryHistorySeconds,
     trajectoryHistoryWindowSec,
     showTrajectory,
@@ -110,11 +118,23 @@ export function ReplayComparisonSidebar({
     onToggleTrajectoryTrack,
     onRemoveMetadata,
     velocityColorPreset,
+    annotations,
+    selectedAnnotationId,
+    onSelectAnnotation,
+    onDeselectAnnotation,
+    onCreateAnnotation1,
+    onCreateAnnotation2,
+    onDeleteAnnotation,
+    onUpdateAnnotationRange,
+    onToggleAnnotationLabel,
+    onSetAnnotationNotes,
+    onSeekVideo,
 }: ReplayComparisonSidebarProps) {
     return (
         <div className="w-md shrink-0 h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 border-l border-gray-200 dark:border-gray-700">
             <div className="flex flex-col">
                 {!hasVideos && <OnboardingContent />}
+
                 <VideoControlPanel
                     hasVideos={hasVideos}
                     hasVideo1={hasVideo1}
@@ -148,29 +168,46 @@ export function ReplayComparisonSidebar({
                     onRemoveMetadata={onRemoveMetadata}
                 />
 
-                {/* <SwipeStatsPanel
-                direction={direction}
-                speed={speed}
-            /> */}
+                <AnnotationPanel
+                    hasVideo1={hasVideo1}
+                    hasVideo2={hasVideo2}
+                    duration1={duration1}
+                    duration2={duration2}
+                    fps1={fps1}
+                    fps2={fps2}
+                    annotations={annotations}
+                    selectedAnnotationId={selectedAnnotationId}
+                    onSelectAnnotation={onSelectAnnotation}
+                    onDeselectAnnotation={onDeselectAnnotation}
+                    onCreateAnnotation1={onCreateAnnotation1}
+                    onCreateAnnotation2={onCreateAnnotation2}
+                    onDeleteAnnotation={onDeleteAnnotation}
+                    onUpdateAnnotationRange={onUpdateAnnotationRange}
+                    onToggleAnnotationLabel={onToggleAnnotationLabel}
+                    onSetAnnotationNotes={onSetAnnotationNotes}
+                    onSeekVideo={onSeekVideo}
+                />
 
-                {hasAnyOverlayData && <OverlaySettingsPanel
-                    trajectoryHistorySeconds={trajectoryHistorySeconds}
-                    trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
-                    showTrajectory={showTrajectory}
-                    hasPoseMetadata={hasPoseMetadata}
-                    showPose={showPose}
-                    availableTrajectoryTrackNames={availableTrajectoryTrackNames}
-                    hiddenTrajectoryTrackNames={hiddenTrajectoryTrackNames}
-                    visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
-                    onSetTrajectoryHistorySeconds={onSetTrajectoryHistorySeconds}
-                    onToggleTrajectory={onToggleTrajectory}
-                    onTogglePose={onTogglePose}
-                    onShowAllTracks={onShowAllTracks}
-                    onHideAllTracks={onHideAllTracks}
-                    onToggleTrajectoryTrack={onToggleTrajectoryTrack}
-                    onRemoveMetadata={onRemoveMetadata}
-                    velocityColorPreset={velocityColorPreset}
-                />}
+                {hasAnyOverlayData && (
+                    <OverlaySettingsPanel
+                        trajectoryHistorySeconds={trajectoryHistorySeconds}
+                        trajectoryHistoryWindowSec={trajectoryHistoryWindowSec}
+                        showTrajectory={showTrajectory}
+                        hasPoseMetadata={hasPoseMetadata}
+                        showPose={showPose}
+                        availableTrajectoryTrackNames={availableTrajectoryTrackNames}
+                        hiddenTrajectoryTrackNames={hiddenTrajectoryTrackNames}
+                        visibleTrajectoryTrackNames={visibleTrajectoryTrackNames}
+                        onSetTrajectoryHistorySeconds={onSetTrajectoryHistorySeconds}
+                        onToggleTrajectory={onToggleTrajectory}
+                        onTogglePose={onTogglePose}
+                        onShowAllTracks={onShowAllTracks}
+                        onHideAllTracks={onHideAllTracks}
+                        onToggleTrajectoryTrack={onToggleTrajectoryTrack}
+                        onRemoveMetadata={onRemoveMetadata}
+                        velocityColorPreset={velocityColorPreset}
+                    />
+                )}
             </div>
         </div>
     );

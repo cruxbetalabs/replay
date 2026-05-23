@@ -8,6 +8,12 @@ interface MouseControlPanelProps {
     controlMode?: 'wheel' | 'drag' | 'both';
 }
 
+type CanvasAnimationApi = {
+    drawLine: (x: number, y: number) => void;
+    startAnimationLoop: () => void;
+    clearCanvas: () => void;
+};
+
 export function MouseControlPanel({
     boxRef,
     direction: externalDirection = 'none',
@@ -17,6 +23,7 @@ export function MouseControlPanel({
     const isDrawingRef = useRef(false);
     const pointsRef = useRef<{ x: number; y: number; timestamp: number }[]>([]);
     const animationFrameRef = useRef<number | null>(null);
+    const animationApiRef = useRef<CanvasAnimationApi | null>(null);
     const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | 'none'>('none');
 
     useEffect(() => {
@@ -44,65 +51,86 @@ export function MouseControlPanel({
         return () => observer.disconnect();
     }, [boxRef]);
 
-    const drawLine = (x: number, y: number) => {
-        pointsRef.current.push({ x, y, timestamp: Date.now() });
-    };
+    useEffect(() => {
+        const redrawCanvas = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
 
-    const redrawCanvas = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const now = Date.now();
+            const twoSecondsAgo = now - 250;
+            pointsRef.current = pointsRef.current.filter((p) => p.timestamp >= twoSecondsAgo);
 
-        // Filter points to only those from the last few moments
-        const now = Date.now();
-        const twoSecondsAgo = now - 250;
-        pointsRef.current = pointsRef.current.filter(p => p.timestamp >= twoSecondsAgo);
+            if (pointsRef.current.length >= 2) {
+                const firstPoint = pointsRef.current[0];
+                const lastPoint = pointsRef.current[pointsRef.current.length - 1];
+                const deltaX = lastPoint.x - firstPoint.x;
 
-        // Calculate swipe direction based on points
-        if (pointsRef.current.length >= 2) {
-            const firstPoint = pointsRef.current[0];
-            const lastPoint = pointsRef.current[pointsRef.current.length - 1];
-            const deltaX = lastPoint.x - firstPoint.x;
-
-            if (Math.abs(deltaX) > 10) {
-                setSwipeDirection(deltaX < 0 ? 'left' : 'right');
+                if (Math.abs(deltaX) > 10) {
+                    setSwipeDirection(deltaX < 0 ? 'left' : 'right');
+                }
+            } else {
+                setSwipeDirection('none');
             }
-        } else {
+
+            if (pointsRef.current.length > 0) {
+                ctx.strokeStyle = 'rgba(46, 46, 46, 0.9)';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(pointsRef.current[0].x, pointsRef.current[0].y);
+                for (let i = 1; i < pointsRef.current.length; i++) {
+                    ctx.lineTo(pointsRef.current[i].x, pointsRef.current[i].y);
+                }
+                ctx.stroke();
+            }
+
+            if (isDrawingRef.current || pointsRef.current.length > 0) {
+                animationFrameRef.current = requestAnimationFrame(redrawCanvas);
+            } else {
+                animationFrameRef.current = null;
+            }
+        };
+
+        const drawLine = (x: number, y: number) => {
+            pointsRef.current.push({ x, y, timestamp: Date.now() });
+        };
+
+        const startAnimationLoop = () => {
+            if (animationFrameRef.current === null) {
+                animationFrameRef.current = requestAnimationFrame(redrawCanvas);
+            }
+        };
+
+        const clearCanvas = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pointsRef.current = [];
             setSwipeDirection('none');
-        }
-
-        // Draw all remaining points
-        if (pointsRef.current.length > 0) {
-            ctx.strokeStyle = 'rgba(46, 46, 46, 0.9)'; // draw line
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            ctx.beginPath();
-            ctx.moveTo(pointsRef.current[0].x, pointsRef.current[0].y);
-            for (let i = 1; i < pointsRef.current.length; i++) {
-                ctx.lineTo(pointsRef.current[i].x, pointsRef.current[i].y);
+            if (animationFrameRef.current !== null) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
             }
-            ctx.stroke();
-        }
+        };
 
-        // Continue animation loop if we're drawing or have points to show
-        if (isDrawingRef.current || pointsRef.current.length > 0) {
-            animationFrameRef.current = requestAnimationFrame(redrawCanvas);
-        } else {
-            animationFrameRef.current = null;
-        }
-    };
+        animationApiRef.current = { drawLine, startAnimationLoop, clearCanvas };
 
-    const startAnimationLoop = () => {
-        if (animationFrameRef.current === null) {
-            animationFrameRef.current = requestAnimationFrame(redrawCanvas);
-        }
-    };
+        return () => {
+            if (animationFrameRef.current !== null) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
+            }
+            animationApiRef.current = null;
+        };
+    }, []);
 
     const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
@@ -114,30 +142,7 @@ export function MouseControlPanel({
         };
     };
 
-    const clearCanvas = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        pointsRef.current = [];
-        setSwipeDirection('none');
-        if (animationFrameRef.current !== null) {
-            cancelAnimationFrame(animationFrameRef.current);
-            animationFrameRef.current = null;
-        }
-    };
-
-    useEffect(() => {
-        return () => {
-            if (animationFrameRef.current !== null) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-        };
-    }, []);
-
     const getBackgroundGradient = () => {
-        // Use external direction from wheel/drag hook, or fallback to swipe direction
         const activeDirection = externalDirection !== 'none' ? externalDirection : swipeDirection;
 
         if (activeDirection === 'left') {
@@ -148,7 +153,6 @@ export function MouseControlPanel({
         return 'white';
     };
 
-    // Use external direction from wheel/drag hook, or fallback to swipe direction
     const activeDirection = externalDirection !== 'none' ? externalDirection : swipeDirection;
 
     return (
@@ -168,13 +172,13 @@ export function MouseControlPanel({
                         isDrawingRef.current = true;
                         pointsRef.current = [];
                         const point = getCanvasPoint(e);
-                        drawLine(point.x, point.y);
-                        startAnimationLoop();
+                        animationApiRef.current?.drawLine(point.x, point.y);
+                        animationApiRef.current?.startAnimationLoop();
                     }}
                     onPointerMove={(e) => {
                         if (!isDrawingRef.current) return;
                         const point = getCanvasPoint(e);
-                        drawLine(point.x, point.y);
+                        animationApiRef.current?.drawLine(point.x, point.y);
                     }}
                     onPointerUp={() => {
                         isDrawingRef.current = false;

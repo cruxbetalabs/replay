@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 
+type VideoWithRVFC = HTMLVideoElement & {
+    requestVideoFrameCallback: (cb: () => void) => number;
+};
+
 interface UseVideoFpsOptions {
     videoRefs: RefObject<HTMLVideoElement | null>[];
     videoUrls?: (string | null)[];
@@ -18,18 +22,6 @@ export function useVideoFps({
 }: UseVideoFpsOptions) {
     const [fpsByIndex, setFpsByIndex] = useState<(number | null)[]>(() => videoRefs.map(() => null));
     const [calculatingByIndex, setCalculatingByIndex] = useState<boolean[]>(() => videoRefs.map(() => false));
-
-    useEffect(() => {
-        setFpsByIndex((prev) => {
-            if (prev.length === videoRefs.length) return prev;
-            return videoRefs.map((_, index) => prev[index] ?? null);
-        });
-
-        setCalculatingByIndex((prev) => {
-            if (prev.length === videoRefs.length) return prev;
-            return videoRefs.map((_, index) => prev[index] ?? false);
-        });
-    }, [videoRefs.length]);
 
     useEffect(() => {
         const cleanups: Array<() => void> = [];
@@ -92,7 +84,7 @@ export function useVideoFps({
                     const measuredFps = Math.max(1, Math.round(frameCount / (elapsed / 1000)));
                     finish(measuredFps);
                 } else {
-                    (video as any).requestVideoFrameCallback(countFrames);
+                    (video as VideoWithRVFC).requestVideoFrameCallback(countFrames);
                 }
             };
 
@@ -114,13 +106,13 @@ export function useVideoFps({
                     if (playPromise && typeof playPromise.then === 'function') {
                         playPromise
                             .then(() => {
-                                (video as any).requestVideoFrameCallback(countFrames);
+                                (video as VideoWithRVFC).requestVideoFrameCallback(countFrames);
                             })
                             .catch(() => {
                                 finish(defaultFps);
                             });
                     } else {
-                        (video as any).requestVideoFrameCallback(countFrames);
+                        (video as VideoWithRVFC).requestVideoFrameCallback(countFrames);
                     }
                 } else {
                     finish(defaultFps);
@@ -148,16 +140,28 @@ export function useVideoFps({
         };
     }, [videoRefs, videoUrls, sampleDurationMs, defaultFps]);
 
+    const videoCount = videoRefs.length;
+
+    const normalizedFpsByIndex = useMemo(
+        () => Array.from({ length: videoCount }, (_, index) => fpsByIndex[index] ?? null),
+        [fpsByIndex, videoCount],
+    );
+
+    const normalizedCalculatingByIndex = useMemo(
+        () => Array.from({ length: videoCount }, (_, index) => calculatingByIndex[index] ?? false),
+        [calculatingByIndex, videoCount],
+    );
+
     const fps = useMemo(() => {
-        for (const value of fpsByIndex) {
+        for (const value of normalizedFpsByIndex) {
             if (value !== null) return value;
         }
         return null;
-    }, [fpsByIndex]);
+    }, [normalizedFpsByIndex]);
 
     return {
         fps,
-        fpsByIndex,
-        calculatingByIndex,
+        fpsByIndex: normalizedFpsByIndex,
+        calculatingByIndex: normalizedCalculatingByIndex,
     };
 }
