@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Rethink_Sans, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const fontSans = Rethink_Sans({
@@ -28,6 +29,7 @@ export default function RootLayout({
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}
       >
         {children}
+        <Toaster richColors closeButton position="bottom-right" />
       </body>
     </html>
   );

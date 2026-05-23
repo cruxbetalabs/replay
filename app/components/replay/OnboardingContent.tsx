@@ -1,7 +1,10 @@
 'use client';
 
-import React from 'react';
-import { Activity, BookmarkPlus, Download, Film, PersonStanding, PlayCircle } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Activity, BookmarkPlus, Check, Copy, Download, Film, PersonStanding, PlayCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -29,11 +32,54 @@ function InlineCode({ children }: { children: React.ReactNode }) {
     );
 }
 
+function formatVideoPathArg(videoPath: string): string {
+    const trimmed = videoPath.trim() || 'climb.mp4';
+    return `"${trimmed.replace(/"/g, '\\"')}"`;
+}
+
+function buildCruxesCommandLines(videoPath: string): string[] {
+    const pathArg = formatVideoPathArg(videoPath);
+    return [
+        'cruxes body-trajectory \\',
+        '  --pose_backend "mediapipe" \\',
+        '  --smooth "gaussian" \\',
+        `  --video_path ${pathArg} \\`,
+        '  --export_metadata \\',
+        '  --json_only',
+    ];
+}
+
 function CodeBlock({ lines }: { lines: string[] }) {
+    const code = lines.join('\n');
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+            toast.success('Command copied to clipboard');
+            window.setTimeout(() => setCopied(false), 2000);
+        } catch {
+            toast.error('Could not copy to clipboard');
+        }
+    }, [code]);
+
     return (
-        <pre className="mt-1.5 px-3 py-2.5 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre leading-5">
-            {lines.join('\n')}
-        </pre>
+        <div className="relative mt-1.5 w-80 max-w-full">
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={handleCopy}
+                className="absolute top-1.5 right-1.5 z-10 size-7 text-gray-500 hover:bg-gray-200/80 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                aria-label="Copy command"
+            >
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            </Button>
+            <pre className="px-3 py-2.5 pr-10 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md text-xs font-mono text-gray-700 dark:text-gray-300 overflow-x-auto whitespace-pre leading-5">
+                {code}
+            </pre>
+        </div>
     );
 }
 
@@ -53,6 +99,9 @@ function FeatureRow({ icon, label, desc }: { icon: React.ReactElement<{ classNam
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function OnboardingContent() {
+    const [videoPath, setVideoPath] = useState('climb.mp4');
+    const commandLines = useMemo(() => buildCruxesCommandLines(videoPath), [videoPath]);
+
     return (
         <div className="p-7 flex flex-col gap-5 mb-10">
             {/* Header */}
@@ -108,16 +157,20 @@ export function OnboardingContent() {
                         Run <InlineCode>cruxes body-trajectory</InlineCode> on your video to extract pose and
                         trajectory data:
                     </p>
-                    <CodeBlock
-                        lines={[
-                            'cruxes body-trajectory \\',
-                            '  --pose_backend "mediapipe" \\',
-                            '  --smooth "gaussian" \\',
-                            '  --video_path climb.mp4 \\',
-                            '  --export_metadata \\',
-                            '  --json_only',
-                        ]}
-                    />
+                    <label className="block space-y-1.5">
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            Video file path
+                        </span>
+                        <Input
+                            type="text"
+                            value={videoPath}
+                            onChange={(event) => setVideoPath(event.target.value)}
+                            placeholder="climb.mp4 or /path/to/your/video.mp4"
+                            className="w-80 max-w-full font-mono text-xs"
+                            spellCheck={false}
+                        />
+                    </label>
+                    <CodeBlock lines={commandLines} />
                     <p>
                         This writes a <InlineCode>climb_trajectory_metadata.json</InlineCode> file next to your
                         video. Repeat for your second video.
