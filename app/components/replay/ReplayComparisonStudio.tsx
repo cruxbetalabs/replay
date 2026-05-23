@@ -12,6 +12,7 @@ import { PRESET_COMPARISONS, type PresetComparison } from '../../lib/presets';
 import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
 
 interface ReplayComparisonStudioProps {
+    // trigger callback when key moments change
     onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
 }
 
