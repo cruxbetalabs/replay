@@ -486,6 +486,17 @@ export const HIP_SIBLINGS: ReadonlyMap<number, number> = new Map([
  */
 export const DEFAULT_IK_ANCHOR_JOINTS: ReadonlySet<number> = new Set([27, 28]);
 
+/**
+ * Both hips — pinned during hand drags so the IK chain stops at the pelvis
+ * (wrist → … → shoulder → hip) instead of continuing through the leg to the ankles.
+ * Without this, far arm reaches pull the near hip via FABRIK and the secondary
+ * contralateral leg re-solve can break pelvis width.
+ */
+export const PELVIS_ANCHOR_JOINTS: ReadonlySet<number> = new Set([23, 24]);
+
+/** Wrist representatives for the hand joint groups (indices 15 and 16). */
+export const HAND_IK_REPRESENTATIVES: ReadonlySet<number> = new Set([15, 16]);
+
 /** Return the joint group an index belongs to, or `null` if ungrouped. */
 export function getLandmarkGroup(index: number): readonly number[] | null {
     return JOINT_GROUPS.find((g) => (g as readonly number[]).includes(index)) ?? null;

@@ -139,7 +139,21 @@ export function OnboardingContent() {
                     <p>
                         Requires Python 3.11+. Install the CLI from PyPI:
                     </p>
-                    <CodeBlock lines={['pip install --upgrade cruxes']} />
+                    <CodeBlock lines={[
+                        'pip install --upgrade cruxes'
+                    ]} />
+                    <p>
+                        or if you use <a
+                            href="https://pipx.pypa.io/stable/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        >pipx</a>:
+
+                    </p>
+                    <CodeBlock lines={[
+                        'pipx install --upgrade cruxes',
+                    ]} />
                 </Step>
 
                 <Step number={2} title="Record your climb">

@@ -1,12 +1,10 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
 import {
     buildAdjacencyMap,
-    canonicalBoneKey,
-    computeCanonicalBoneLengths,
     computeDistToNearestAnchor,
     cssPixelsToPoseUnits,
     cssToPoseCoords,
@@ -42,8 +40,6 @@ type IKMeta = {
      * (ankle joints).  Determines "downstream" direction for branch propagation.
      */
     distToAnchor: Map<number, number>;
-    /** Median 3D bone length per connection, keyed by `canonicalBoneKey`. */
-    canonicalBoneLengths: Map<string, number>;
 };
 
 type DragState = {
@@ -67,6 +63,69 @@ type DragState = {
     /** Offset from the IK representative to the actually-grabbed landmark. */
     groupOffset: Pos2D;
 };
+
+const LEFT_HIP_INDEX = 23;
+const RIGHT_HIP_INDEX = 24;
+
+function preservePelvisWidth(
+    ikResult: Map<number, Pos2D>,
+    initialPositions: Map<number, Pos2D>,
+) {
+    const leftInitial = initialPositions.get(LEFT_HIP_INDEX);
+    const rightInitial = initialPositions.get(RIGHT_HIP_INDEX);
+    if (!leftInitial || !rightInitial) return;
+
+    const leftSolved = ikResult.get(LEFT_HIP_INDEX) ?? leftInitial;
+    const rightSolved = ikResult.get(RIGHT_HIP_INDEX) ?? rightInitial;
+    if (!ikResult.has(LEFT_HIP_INDEX) && !ikResult.has(RIGHT_HIP_INDEX)) return;
+
+    const initialWidth = Math.hypot(
+        rightInitial.x - leftInitial.x,
+        rightInitial.y - leftInitial.y,
+    );
+    if (initialWidth <= 0) return;
+
+    const midpoint: Pos2D = {
+        x: (leftSolved.x + rightSolved.x) / 2,
+        y: (leftSolved.y + rightSolved.y) / 2,
+    };
+
+    let vx = rightSolved.x - leftSolved.x;
+    let vy = rightSolved.y - leftSolved.y;
+    const solvedWidth = Math.hypot(vx, vy);
+    if (solvedWidth <= 1e-6) {
+        vx = rightInitial.x - leftInitial.x;
+        vy = rightInitial.y - leftInitial.y;
+    } else {
+        vx /= solvedWidth;
+        vy /= solvedWidth;
+    }
+
+    const halfWidth = initialWidth / 2;
+    ikResult.set(LEFT_HIP_INDEX, {
+        x: midpoint.x - vx * halfWidth,
+        y: midpoint.y - vy * halfWidth,
+    });
+    ikResult.set(RIGHT_HIP_INDEX, {
+        x: midpoint.x + vx * halfWidth,
+        y: midpoint.y + vy * halfWidth,
+    });
+}
+
+function buildIKMeta(metadata: TrajectoryMetadata): IKMeta | null {
+    if (!metadata.pose) return null;
+
+    const adjacencyMap = buildAdjacencyMap(metadata.pose.skeletonConnections);
+    const anchors = findAnchorLandmarks(metadata.pose.skeletonConnections);
+    // Use ankle joints as BFS roots so distToAnchor describes "distance from
+    // feet"; fall back to structural anchors if ankles are missing.
+    const ikAnchors = (adjacencyMap.has(27) && adjacencyMap.has(28))
+        ? DEFAULT_IK_ANCHOR_JOINTS
+        : anchors;
+    const distToAnchor = computeDistToNearestAnchor(adjacencyMap, ikAnchors);
+
+    return { adjacencyMap, anchors, distToAnchor };
+}
 
 export interface IKDragResult {
     /** Landmark position overrides, one entry per source in input order. */
@@ -114,53 +173,21 @@ export function useIKDrag(
     // ── Stable refs (all mutable values read inside pointer callbacks) ────────
 
     const sourcesRef = useRef(sources);
-    sourcesRef.current = sources;
-
     const overridesRef = useRef(overrides);
-    overridesRef.current = overrides;
-
     const showPoseRef = useRef(showPose);
-    showPoseRef.current = showPose;
-
     const pinnedJointsRef = useRef(pinnedJoints);
-    pinnedJointsRef.current = pinnedJoints;
 
-    // ── Per-source ikMeta — ref-based manual memoization ─────────────────────
-    // Recomputes adjacency map + anchors only when a source's metadata changes,
-    // without needing a useMemo call inside a loop (which would violate Rules of Hooks).
+    useLayoutEffect(() => {
+        sourcesRef.current = sources;
+        overridesRef.current = overrides;
+        showPoseRef.current = showPose;
+        pinnedJointsRef.current = pinnedJoints;
+    }, [sources, overrides, showPose, pinnedJoints]);
 
-    const prevMetadatasRef = useRef<Array<TrajectoryMetadata | null>>(
-        Array.from({ length: sources.length }, () => null),
+    const ikMetas = useMemo(
+        () => sources.map((source) => (source.metadata ? buildIKMeta(source.metadata) : null)),
+        [sources],
     );
-    const ikMetasRef = useRef<Array<IKMeta | null>>(
-        Array.from({ length: sources.length }, () => null),
-    );
-
-    sources.forEach((source, i) => {
-        if (source.metadata !== prevMetadatasRef.current[i]) {
-            prevMetadatasRef.current[i] = source.metadata;
-            ikMetasRef.current[i] = source.metadata?.pose
-                ? (() => {
-                    const adjacencyMap = buildAdjacencyMap(source.metadata.pose.skeletonConnections);
-                    const anchors = findAnchorLandmarks(source.metadata.pose.skeletonConnections);
-                    // Use ankle joints as BFS roots so distToAnchor describes
-                    // "distance from feet" — joints closer to hands/head are
-                    // strictly "downstream" and branch propagation flows correctly.
-                    // Fall back to structural anchors (hips) if ankles aren't in the graph.
-                    const ikAnchors = (adjacencyMap.has(27) && adjacencyMap.has(28))
-                        ? DEFAULT_IK_ANCHOR_JOINTS
-                        : anchors;
-                    const distToAnchor = computeDistToNearestAnchor(adjacencyMap, ikAnchors);
-                    const canonicalBoneLengths = computeCanonicalBoneLengths(
-                        source.metadata.pose.frames,
-                        source.metadata.pose.skeletonConnections,
-                        source.metadata.pose.coordinateSpace.width,
-                    );
-                    return { adjacencyMap, anchors, distToAnchor, canonicalBoneLengths };
-                })()
-                : null;
-        }
-    });
 
     // ── Drag state ────────────────────────────────────────────────────────────
 
@@ -244,7 +271,7 @@ export function useIKDrag(
             if (bestSourceIndex < 0) return;
 
             const source = sourcesRef.current[bestSourceIndex];
-            const ikMeta = ikMetasRef.current[bestSourceIndex];
+            const ikMeta = ikMetas[bestSourceIndex];
             if (!source.metadata?.pose || !ikMeta) return;
 
             // Route IK through the group representative so the whole hand/foot
@@ -319,7 +346,7 @@ export function useIKDrag(
             e.currentTarget.setPointerCapture(e.pointerId);
             updateCursor('grabbing');
         },
-        [tryHit, updateCursor],
+        [ikMetas, tryHit, updateCursor],
     );
 
     const onPointerMove = useCallback(
@@ -358,7 +385,7 @@ export function useIKDrag(
 
             // Use the 2D lengths captured at drag-start — no 3D estimation needed.
             const { chainBoneLengths } = drag;
-            const ikMeta = ikMetasRef.current[sourceIndex];
+            const ikMeta = ikMetas[sourceIndex];
 
             const ikResult = solveFABRIK(
                 chain,
@@ -476,6 +503,8 @@ export function useIKDrag(
                         if (!chainSet2.has(idx)) ikResult.set(idx, pos);
                     });
                 }
+
+                preservePelvisWidth(ikResult, initialPositions);
             }
 
             // ── Group rigid propagation ─────────────────────────────────────────
@@ -505,7 +534,7 @@ export function useIKDrag(
                 return next;
             });
         },
-        [tryHit, updateCursor],
+        [ikMetas, tryHit, updateCursor],
     );
 
     const onPointerUp = useCallback(() => {
