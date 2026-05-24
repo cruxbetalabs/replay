@@ -54,6 +54,8 @@ function isProcessingStatus(status: CloudJobSummary['status']): boolean {
 export function useReplayCloud() {
     const enabled = isReplayCloudEnabled();
     const [isBootstrapped, setIsBootstrapped] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(enabled);
+    const [connectionError, setConnectionError] = useState<string | null>(null);
     const [jobs, setJobs] = useState<CloudJobSummary[]>([]);
     const [activeUpload, setActiveUpload] = useState<ActiveCloudUpload | null>(null);
     const activeUploadRef = useRef<ActiveCloudUpload | null>(null);
@@ -105,26 +107,70 @@ export function useReplayCloud() {
 
     useEffect(() => {
         if (!enabled) {
+            setIsConnecting(false);
             return;
         }
 
         let cancelled = false;
 
-        void bootstrapReplayCloudClient()
-            .then(() => {
+        const connect = async () => {
+            setIsConnecting(true);
+            setConnectionError(null);
+            setIsBootstrapped(false);
+
+            try {
+                await bootstrapReplayCloudClient();
                 if (!cancelled) {
                     setIsBootstrapped(true);
                 }
-            })
-            .catch((error) => {
-                const message = error instanceof Error ? error.message : 'Could not connect to Replay Cloud.';
-                toast.error(message);
-            });
+            } catch (error) {
+                if (cancelled) {
+                    return;
+                }
+
+                const message = error instanceof ReplayCloudError
+                    ? error.message
+                    : error instanceof Error
+                        ? error.message
+                        : 'Could not connect to Replay Cloud.';
+                setConnectionError(message);
+            } finally {
+                if (!cancelled) {
+                    setIsConnecting(false);
+                }
+            }
+        };
+
+        void connect();
 
         return () => {
             cancelled = true;
         };
     }, [enabled]);
+
+    const retryConnection = useCallback(async () => {
+        if (!enabled || isConnecting) {
+            return;
+        }
+
+        setIsConnecting(true);
+        setConnectionError(null);
+        setIsBootstrapped(false);
+
+        try {
+            await bootstrapReplayCloudClient();
+            setIsBootstrapped(true);
+        } catch (error) {
+            const message = error instanceof ReplayCloudError
+                ? error.message
+                : error instanceof Error
+                    ? error.message
+                    : 'Could not connect to Replay Cloud.';
+            setConnectionError(message);
+        } finally {
+            setIsConnecting(false);
+        }
+    }, [enabled, isConnecting]);
 
     useEffect(() => {
         if (!enabled || !isBootstrapped) {
@@ -335,6 +381,9 @@ export function useReplayCloud() {
     return {
         enabled,
         isBootstrapped,
+        isConnecting,
+        connectionError,
+        retryConnection,
         jobs,
         readyJobs,
         activeUpload,

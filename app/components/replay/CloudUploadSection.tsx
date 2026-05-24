@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { CloudUpload, Loader2, X } from 'lucide-react';
+import { CloudUpload, CloudOff, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CloudJobCard } from './CloudJobCard';
 import type { VideoIndex } from '../../lib/key-moments';
@@ -14,6 +14,9 @@ import {
 
 interface CloudUploadSectionProps {
     isBootstrapped: boolean;
+    isConnecting?: boolean;
+    connectionError?: string | null;
+    onRetryConnection?: () => void;
     activeUpload: ActiveCloudUpload | null;
     jobs: CloudJobSummary[];
     onUpload: (file: File) => Promise<void>;
@@ -27,6 +30,9 @@ interface CloudUploadSectionProps {
 
 export function CloudUploadSection({
     isBootstrapped,
+    isConnecting = false,
+    connectionError = null,
+    onRetryConnection,
     activeUpload,
     jobs,
     onUpload,
@@ -48,6 +54,9 @@ export function CloudUploadSection({
     );
 
     const showUploadError = activeUpload?.phase === 'failed';
+
+    const showConnectionError = connectionError !== null;
+    const canUpload = isBootstrapped && !isConnecting && !showConnectionError;
 
     const handleFiles = useCallback(async (files: FileList | File[]) => {
         const file = Array.from(files).find(isSupportedCloudVideo);
@@ -82,18 +91,21 @@ export function CloudUploadSection({
             )}
 
             <div
-                role="button"
-                tabIndex={0}
+                role={canUpload ? 'button' : undefined}
+                tabIndex={canUpload ? 0 : undefined}
                 onKeyDown={(event) => {
+                    if (!canUpload) {
+                        return;
+                    }
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         inputRef.current?.click();
                     }
                 }}
-                onClick={() => !isActivelyUploading && inputRef.current?.click()}
+                onClick={() => canUpload && !isActivelyUploading && inputRef.current?.click()}
                 onDragOver={(event) => {
                     event.preventDefault();
-                    if (!isActivelyUploading) {
+                    if (!isActivelyUploading && canUpload) {
                         setIsDragging(true);
                     }
                 }}
@@ -101,16 +113,22 @@ export function CloudUploadSection({
                 onDrop={(event) => {
                     event.preventDefault();
                     setIsDragging(false);
-                    if (!isActivelyUploading && isBootstrapped) {
+                    if (!isActivelyUploading && canUpload) {
                         void handleFiles(event.dataTransfer.files);
                     }
                 }}
                 className={[
                     'relative rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors',
-                    isDragging
-                        ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30'
-                        : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600',
-                    isActivelyUploading || !isBootstrapped ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
+                    showConnectionError
+                        ? 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
+                        : isDragging
+                            ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30'
+                            : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600',
+                    showConnectionError
+                        ? 'cursor-default'
+                        : isActivelyUploading || !canUpload
+                            ? 'cursor-not-allowed opacity-70'
+                            : 'cursor-pointer',
                 ].join(' ')}
             >
                 <input
@@ -118,7 +136,7 @@ export function CloudUploadSection({
                     type="file"
                     accept="video/mp4,video/quicktime,.mp4,.mov"
                     className="hidden"
-                    disabled={isActivelyUploading || !isBootstrapped}
+                    disabled={isActivelyUploading || !canUpload}
                     onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = '';
@@ -129,24 +147,59 @@ export function CloudUploadSection({
                 />
 
                 <div className="flex flex-col items-center gap-2">
-                    {isActivelyUploading ? (
+                    {showConnectionError ? (
+                        <CloudOff className="size-8 text-red-500 dark:text-red-400" />
+                    ) : isActivelyUploading || isConnecting ? (
                         <Loader2 className="size-8 text-blue-500 animate-spin" />
                     ) : (
                         <CloudUpload className="size-8 text-gray-400 dark:text-gray-500" />
                     )}
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {!isBootstrapped
-                            ? 'Connecting to Replay Cloud…'
-                            : isActivelyUploading
-                                ? formatCloudUploadPhase(activeUpload!.phase)
-                                : 'Drop a video here or click to browse'}
+                    <p className={[
+                        'text-sm font-medium',
+                        showConnectionError
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-gray-700 dark:text-gray-300',
+                    ].join(' ')}>
+                        {showConnectionError
+                            ? 'Replay Cloud is not available'
+                            : isConnecting
+                                ? 'Connecting to Replay Cloud…'
+                                : isActivelyUploading
+                                    ? formatCloudUploadPhase(activeUpload!.phase)
+                                    : 'Drop a video here or click to browse'}
                     </p>
-                    {!isActivelyUploading && (
+                    {showConnectionError ? (
+                        <p className="max-w-sm text-xs leading-relaxed text-red-600/90 dark:text-red-400/90">
+                            {connectionError}
+                        </p>
+                    ) : !isActivelyUploading && !isConnecting && (
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                             .mp4 / .mov · up to {MAX_CLOUD_UPLOAD_BYTES / (1024 * 1024)} MB · {MAX_CLOUD_DURATION_SECONDS / 60} min max · kept {CLOUD_RETENTION_DAYS} days
                         </p>
                     )}
                 </div>
+
+                {showConnectionError && onRetryConnection && (
+                    <div className="mt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
+                            disabled={isConnecting}
+                            onClick={() => void onRetryConnection()}
+                        >
+                            {isConnecting ? (
+                                <>
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                    Retrying…
+                                </>
+                            ) : (
+                                'Try again'
+                            )}
+                        </Button>
+                    </div>
+                )}
 
                 {activeUpload && activeUpload.phase === 'uploading' && (
                     <div className="mt-4 mx-auto max-w-xs">

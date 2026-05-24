@@ -62,6 +62,9 @@ interface ReplayComparisonSidebarProps {
     velocityColorPreset?: VelocityColorPreset | null;
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
+    cloudConnecting?: boolean;
+    cloudConnectionError?: string | null;
+    onRetryCloudConnection?: () => void;
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
@@ -123,6 +126,9 @@ export function ReplayComparisonSidebar({
     velocityColorPreset,
     cloudEnabled = false,
     cloudBootstrapped = false,
+    cloudConnecting = false,
+    cloudConnectionError = null,
+    onRetryCloudConnection,
     cloudActiveUpload = null,
     cloudJobs = [],
     onCloudUpload,
@@ -139,6 +145,9 @@ export function ReplayComparisonSidebar({
                     <OnboardingContent
                         cloudEnabled={cloudEnabled}
                         cloudBootstrapped={cloudBootstrapped}
+                        cloudConnecting={cloudConnecting}
+                        cloudConnectionError={cloudConnectionError}
+                        onRetryCloudConnection={onRetryCloudConnection}
                         cloudActiveUpload={cloudActiveUpload}
                         cloudJobs={cloudJobs}
                         onCloudUpload={onCloudUpload}

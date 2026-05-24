@@ -52,6 +52,9 @@ interface ReplayComparisonWorkspaceProps {
     presetKeyMomentsState?: { keyMoments: KeyMoment[]; selectedKeyMomentId: string | null } | null;
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
+    cloudConnecting?: boolean;
+    cloudConnectionError?: string | null;
+    onRetryCloudConnection?: () => void;
     cloudJobs?: CloudJobSummary[];
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudInProgressCount?: number;
@@ -85,6 +88,9 @@ export function ReplayComparisonWorkspace({
     presetKeyMomentsState,
     cloudEnabled = false,
     cloudBootstrapped = false,
+    cloudConnecting = false,
+    cloudConnectionError = null,
+    onRetryCloudConnection,
     cloudJobs = [],
     cloudActiveUpload = null,
     cloudInProgressCount = 0,
@@ -375,6 +381,9 @@ export function ReplayComparisonWorkspace({
                 velocityColorPreset={velocityColorPreset}
                 cloudEnabled={cloudEnabled}
                 cloudBootstrapped={cloudBootstrapped}
+                cloudConnecting={cloudConnecting}
+                cloudConnectionError={cloudConnectionError}
+                onRetryCloudConnection={onRetryCloudConnection}
                 cloudActiveUpload={cloudActiveUpload}
                 cloudJobs={cloudJobs}
                 onCloudUpload={onCloudUpload}

@@ -236,6 +236,9 @@ function LocalCliOnboarding({ videoPath, setVideoPath, commandLines }: {
 interface OnboardingContentProps {
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
+    cloudConnecting?: boolean;
+    cloudConnectionError?: string | null;
+    onRetryCloudConnection?: () => void;
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
@@ -251,6 +254,9 @@ interface OnboardingContentProps {
 export function OnboardingContent({
     cloudEnabled = false,
     cloudBootstrapped = false,
+    cloudConnecting = false,
+    cloudConnectionError = null,
+    onRetryCloudConnection,
     cloudActiveUpload = null,
     cloudJobs = [],
     onCloudUpload,
@@ -301,6 +307,9 @@ export function OnboardingContent({
                         <CloudUploadSection
                             hideHeader
                             isBootstrapped={cloudBootstrapped}
+                            isConnecting={cloudConnecting}
+                            connectionError={cloudConnectionError}
+                            onRetryConnection={onRetryCloudConnection}
                             activeUpload={cloudActiveUpload}
                             jobs={cloudJobs}
                             onUpload={onCloudUpload}
