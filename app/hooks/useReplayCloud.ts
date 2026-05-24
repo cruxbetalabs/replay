@@ -148,30 +148,6 @@ export function useReplayCloud() {
         };
     }, [enabled]);
 
-    const retryConnection = useCallback(async () => {
-        if (!enabled || isConnecting) {
-            return;
-        }
-
-        setIsConnecting(true);
-        setConnectionError(null);
-        setIsBootstrapped(false);
-
-        try {
-            await bootstrapReplayCloudClient();
-            setIsBootstrapped(true);
-        } catch (error) {
-            const message = error instanceof ReplayCloudError
-                ? error.message
-                : error instanceof Error
-                    ? error.message
-                    : 'Could not connect to Replay Cloud.';
-            setConnectionError(message);
-        } finally {
-            setIsConnecting(false);
-        }
-    }, [enabled, isConnecting]);
-
     useEffect(() => {
         if (!enabled || !isBootstrapped) {
             return;
@@ -383,7 +359,6 @@ export function useReplayCloud() {
         isBootstrapped,
         isConnecting,
         connectionError,
-        retryConnection,
         jobs,
         readyJobs,
         activeUpload,
