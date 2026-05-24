@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Ellipsis, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Ellipsis, Plus, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     AlertDialog,
@@ -36,16 +36,20 @@ import {
 interface CloudJobCardActionsProps {
     disabled?: boolean;
     showAddMenu?: boolean;
+    showDownloadMetadata?: boolean;
     onAddLeft: () => void;
     onAddRight: () => void;
+    onDownloadMetadata?: () => void;
     onDelete: () => void;
 }
 
 export function CloudJobCardActions({
     disabled = false,
     showAddMenu = true,
+    showDownloadMetadata = false,
     onAddLeft,
     onAddRight,
+    onDownloadMetadata,
     onDelete,
 }: CloudJobCardActionsProps) {
     return (
@@ -79,6 +83,19 @@ export function CloudJobCardActions({
                         >
                             <Plus className="size-3.5" />
                             Add to the right side
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                    </>
+                )}
+                {showDownloadMetadata && onDownloadMetadata && (
+                    <>
+                        <DropdownMenuItem
+                            disabled={disabled}
+                            className="whitespace-nowrap"
+                            onSelect={() => onDownloadMetadata()}
+                        >
+                            <Download className="size-3.5" />
+                            Download metadata JSON
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                     </>
@@ -120,6 +137,7 @@ interface CloudJobCardProps {
     disabled?: boolean;
     dragSource?: CloudJobDragSource;
     onLoad: (jobId: string, videoIndex: VideoIndex) => void;
+    onDownloadMetadata?: (jobId: string) => Promise<void>;
     onDelete: (jobId: string) => Promise<void>;
 }
 
@@ -128,6 +146,7 @@ export function CloudJobCard({
     disabled = false,
     dragSource,
     onLoad,
+    onDownloadMetadata,
     onDelete,
 }: CloudJobCardProps) {
     const cloudJobDrag = useCloudJobDragOptional();
@@ -220,8 +239,10 @@ export function CloudJobCard({
                     <CloudJobCardActions
                         disabled={isCardDisabled}
                         showAddMenu={isReady}
+                        showDownloadMetadata={isReady && onDownloadMetadata !== undefined}
                         onAddLeft={() => onLoad(job.job_id, 0)}
                         onAddRight={() => onLoad(job.job_id, 1)}
+                        onDownloadMetadata={onDownloadMetadata ? () => void onDownloadMetadata(job.job_id) : undefined}
                         onDelete={() => setDeleteDialogOpen(true)}
                     />
                     <CloudJobStatus job={job} />

@@ -79,6 +79,7 @@ interface ReplayMenubarProps {
     cloudInProgressCount?: number;
     onRefreshCloudJobs?: () => void;
     onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadCloudJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteCloudJob?: (jobId: string) => Promise<void>;
     isLoadingCloudJob?: boolean;
 }
@@ -102,6 +103,7 @@ export function ReplayMenubar({
     cloudInProgressCount = 0,
     onRefreshCloudJobs,
     onLoadCloudJob,
+    onDownloadCloudJobMetadata,
     onDeleteCloudJob,
     isLoadingCloudJob = false,
 }: ReplayMenubarProps) {
@@ -141,6 +143,7 @@ export function ReplayMenubar({
                     isBootstrapped={cloudBootstrapped}
                     onRefresh={onRefreshCloudJobs}
                     onLoadJob={onLoadCloudJob}
+                    onDownloadJobMetadata={onDownloadCloudJobMetadata}
                     onDeleteJob={onDeleteCloudJob}
                     isLoadingCloudJob={isLoadingCloudJob}
                 />

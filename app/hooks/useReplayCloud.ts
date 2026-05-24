@@ -16,7 +16,7 @@ import {
     uploadFileToPresignedUrl,
 } from '../lib/replay-cloud/jobs';
 import { probeCloudVideoFile } from '../lib/replay-cloud/probe-video';
-import { downloadUrlWithProgress } from '../lib/download-with-progress';
+import { downloadUrlWithProgress, triggerBlobDownload, type DownloadProgress } from '../lib/download-with-progress';
 import type { ActiveCloudUpload, CloudJobSummary, CloudUploadPhase } from '../lib/replay-cloud/types';
 
 export interface LoadCloudJobHandlers {
@@ -33,7 +33,11 @@ export interface LoadCloudJobOptions {
         status: 'loading' | 'success' | 'error',
         error?: string,
     ) => void;
-    onFileDownloadProgress?: (key: CloudJobLoadFileKey, progress: number) => void;
+    onFileDownloadProgress?: (key: CloudJobLoadFileKey, update: DownloadProgress) => void;
+}
+
+export interface DownloadCloudJobMetadataOptions {
+    onDownloadProgress?: (update: DownloadProgress) => void;
 }
 
 function isTerminalStatus(status: CloudJobSummary['status']): boolean {
@@ -239,8 +243,8 @@ export function useReplayCloud() {
         const metadataBaseName = job.original_filename.replace(/\.[^.]+$/, '') || 'cloud';
 
         const [videoResult, metadataResult] = await Promise.all([
-            downloadUrlWithProgress(assets.video_url, 'blob', (progress) => {
-                reportDownload?.('video', progress);
+            downloadUrlWithProgress(assets.video_url, 'blob', (update) => {
+                reportDownload?.('video', update);
             })
                 .then((blob) => {
                     report?.('video', 'success');
@@ -251,8 +255,8 @@ export function useReplayCloud() {
                     report?.('video', 'error', message);
                     throw error;
                 }),
-            downloadUrlWithProgress(assets.metadata_url, 'text', (progress) => {
-                reportDownload?.('metadata', progress);
+            downloadUrlWithProgress(assets.metadata_url, 'text', (update) => {
+                reportDownload?.('metadata', update);
             })
                 .then((text) => {
                     report?.('metadata', 'success');
@@ -273,14 +277,45 @@ export function useReplayCloud() {
         );
 
         handlers.clearVideoDimensions(videoIndex);
-        handlers.replaceVideoSource(videoIndex, videoFile);
+
         const result = await handlers.handleTrajectoryFile(videoIndex, metadataFile);
         if (result.error) {
             report?.('metadata', 'error', result.error);
             throw new Error(result.error);
         }
 
+        handlers.replaceVideoSource(videoIndex, videoFile);
+
         toast.success(`Loaded ${job.original_filename} into Video ${videoIndex + 1}.`);
+    }, [jobs]);
+
+    const downloadJobMetadata = useCallback(async (jobId: string, options?: DownloadCloudJobMetadataOptions) => {
+        try {
+            const job = jobs.find((entry) => entry.job_id === jobId) ?? await getCloudJob(jobId);
+            if (job.status !== 'ready') {
+                throw new Error('Cloud job is not ready yet.');
+            }
+
+            const assets = await getCloudJobAssets(jobId);
+            const metadataBaseName = job.original_filename.replace(/\.[^.]+$/, '') || 'cloud';
+            const metadataFileName = `${metadataBaseName}_trajectory_metadata.json`;
+            const metadataText = await downloadUrlWithProgress(
+                assets.metadata_url,
+                'text',
+                options?.onDownloadProgress,
+            );
+            const blob = new Blob([metadataText as string], { type: 'application/json' });
+            triggerBlobDownload(blob, metadataFileName);
+            toast.success(`Downloaded ${metadataFileName}.`);
+        } catch (error) {
+            const message = error instanceof ReplayCloudError
+                ? error.message
+                : error instanceof Error
+                    ? error.message
+                    : 'Metadata download failed.';
+            toast.error(message);
+            throw error;
+        }
     }, [jobs]);
 
     const clearActiveUpload = useCallback(() => {
@@ -306,6 +341,7 @@ export function useReplayCloud() {
         inProgressCount,
         uploadVideo,
         loadJobIntoSlot,
+        downloadJobMetadata,
         deleteJob,
         refreshJobs,
         clearActiveUpload,

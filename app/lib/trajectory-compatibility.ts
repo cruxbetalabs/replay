@@ -35,6 +35,26 @@ export const getTrajectoryDurationMismatchWarning = (
     return `Trajectory duration ${metadataDurationSeconds.toFixed(2)}s does not match video duration ${videoDurationSeconds.toFixed(2)}s.`;
 };
 
+export const getTrajectoryDimensionMismatchWarnings = (
+    metadata: TrajectoryMetadata | null,
+    videoDimensions: VideoDimensions | null,
+): string[] => {
+    if (!metadata || !videoDimensions) {
+        return [];
+    }
+
+    if (
+        metadata.sourceVideo.width !== videoDimensions.width
+        || metadata.sourceVideo.height !== videoDimensions.height
+    ) {
+        return [
+            `Trajectory source dimensions ${metadata.sourceVideo.width}x${metadata.sourceVideo.height} do not match video dimensions ${videoDimensions.width}x${videoDimensions.height}.`,
+        ];
+    }
+
+    return [];
+};
+
 export const getTrajectoryCompatibilityWarnings = (
     metadata: TrajectoryMetadata | null,
     videoDimensions: VideoDimensions | null,
@@ -43,16 +63,7 @@ export const getTrajectoryCompatibilityWarnings = (
         return [];
     }
 
-    const warnings: string[] = [];
-
-    if (
-        metadata.sourceVideo.width !== videoDimensions.width
-        || metadata.sourceVideo.height !== videoDimensions.height
-    ) {
-        warnings.push(
-            `Trajectory source dimensions ${metadata.sourceVideo.width}x${metadata.sourceVideo.height} do not match video dimensions ${videoDimensions.width}x${videoDimensions.height}.`,
-        );
-    }
+    const warnings = getTrajectoryDimensionMismatchWarnings(metadata, videoDimensions);
 
     const durationMismatchWarning = getTrajectoryDurationMismatchWarning(metadata, videoDimensions);
     if (durationMismatchWarning) {

@@ -56,6 +56,7 @@ export function ReplayComparisonStudio({
         inProgressCount: cloudInProgressCount,
         uploadVideo: uploadCloudVideo,
         loadJobIntoSlot: loadCloudJobIntoSlot,
+        downloadJobMetadata: downloadCloudJobMetadata,
         deleteJob: deleteCloudJob,
         refreshJobs: refreshCloudJobs,
         clearActiveUpload: clearCloudActiveUpload,
@@ -88,6 +89,11 @@ export function ReplayComparisonStudio({
     const [presetLoadOpen, setPresetLoadOpen] = useState(false);
     const [presetLoadLabel, setPresetLoadLabel] = useState('');
     const [presetLoadRows, setPresetLoadRows] = useState<PresetLoadFileRow[]>([]);
+    const [presetLoadDescriptions, setPresetLoadDescriptions] = useState({
+        loading: 'Fetching files…',
+        success: 'All files loaded successfully.',
+        error: 'Some files could not be loaded.',
+    });
     const isLoadingCloudJob = presetLoadOpen && presetLoadRows.some((row) => row.status === 'loading');
 
     const handleLoadCloudJob = useCallback(async (jobId: string, videoIndex: VideoIndex) => {
@@ -100,6 +106,11 @@ export function ReplayComparisonStudio({
         const metadataBaseName = job.original_filename.replace(/\.[^.]+$/, '') || 'cloud';
         const metadataFileName = `${metadataBaseName}_trajectory_metadata.json`;
 
+        setPresetLoadDescriptions({
+            loading: 'Fetching files…',
+            success: 'All files loaded successfully.',
+            error: 'Some files could not be loaded.',
+        });
         setPresetLoadLabel(`Video ${videoIndex + 1} · ${job.original_filename}`);
         setPresetLoadRows([
             { key: 'video', fileName: job.original_filename, kind: 'video', status: 'loading' },
@@ -123,8 +134,12 @@ export function ReplayComparisonStudio({
                         ...(status === 'success' ? { progress: 1 } : {}),
                     });
                 },
-                onFileDownloadProgress: (key, progress) => {
-                    updateRow(key, { progress });
+                onFileDownloadProgress: (key, update) => {
+                    updateRow(key, {
+                        progress: update.progress,
+                        loadedBytes: update.loaded,
+                        totalBytes: update.total,
+                    });
                 },
             });
 
@@ -140,6 +155,50 @@ export function ReplayComparisonStudio({
         loadCloudJobIntoSlot,
         replaceVideoSource,
     ]);
+
+    const handleDownloadCloudJobMetadata = useCallback(async (jobId: string) => {
+        const job = cloudJobs.find((entry) => entry.job_id === jobId)
+            ?? cloudReadyJobs.find((entry) => entry.job_id === jobId);
+        if (!job) {
+            return;
+        }
+
+        const metadataBaseName = job.original_filename.replace(/\.[^.]+$/, '') || 'cloud';
+        const metadataFileName = `${metadataBaseName}_trajectory_metadata.json`;
+
+        setPresetLoadDescriptions({
+            loading: 'Preparing download…',
+            success: 'Download ready.',
+            error: 'Could not download metadata.',
+        });
+        setPresetLoadLabel(job.original_filename);
+        setPresetLoadRows([
+            { key: 'metadata', fileName: metadataFileName, kind: 'metadata', status: 'loading', progress: 0 },
+        ]);
+        setPresetLoadOpen(true);
+
+        const updateRow = (key: string, update: Partial<PresetLoadFileRow>) =>
+            setPresetLoadRows((prev) => prev.map((row) => row.key === key ? { ...row, ...update } : row));
+
+        try {
+            await downloadCloudJobMetadata(jobId, {
+                onDownloadProgress: (update) => {
+                    updateRow('metadata', {
+                        progress: update.progress,
+                        loadedBytes: update.loaded,
+                        totalBytes: update.total,
+                    });
+                },
+            });
+            updateRow('metadata', { status: 'success', progress: 1 });
+            setTimeout(() => setPresetLoadOpen(false), 800);
+        } catch (error) {
+            updateRow('metadata', {
+                status: 'error',
+                error: error instanceof Error ? error.message : 'Metadata download failed.',
+            });
+        }
+    }, [cloudJobs, cloudReadyJobs, downloadCloudJobMetadata]);
 
     const loadPreset = useCallback(async (preset: PresetComparison) => {
         clearVideoDimensions(0);
@@ -161,6 +220,11 @@ export function ReplayComparisonStudio({
             initialRows.push({ key: 'keymoments', fileName: kmFileName, kind: 'keymoments', status: 'loading' });
         }
 
+        setPresetLoadDescriptions({
+            loading: 'Fetching files…',
+            success: 'All files loaded successfully.',
+            error: 'Some files could not be loaded.',
+        });
         setPresetLoadLabel(preset.label);
         setPresetLoadRows(initialRows);
         setPresetLoadOpen(true);
@@ -322,6 +386,7 @@ export function ReplayComparisonStudio({
                 cloudInProgressCount={cloudInProgressCount}
                 onCloudUpload={uploadCloudVideo}
                 onLoadCloudJob={handleLoadCloudJob}
+                onDownloadCloudJobMetadata={handleDownloadCloudJobMetadata}
                 onDeleteCloudJob={deleteCloudJob}
                 onRefreshCloudJobs={refreshCloudJobs}
                 onClearCloudUpload={clearCloudActiveUpload}
@@ -331,6 +396,9 @@ export function ReplayComparisonStudio({
                 open={presetLoadOpen}
                 presetLabel={presetLoadLabel}
                 rows={presetLoadRows}
+                loadingDescription={presetLoadDescriptions.loading}
+                successDescription={presetLoadDescriptions.success}
+                errorDescription={presetLoadDescriptions.error}
                 onClose={() => setPresetLoadOpen(false)}
             />
             </>

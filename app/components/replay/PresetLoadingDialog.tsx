@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, FileJson2, FileVideo, Loader2, XCircle } from 'lucide-react';
+import { formatDownloadProgress } from '../../lib/download-with-progress';
 import {
     Dialog,
     DialogContent,
@@ -16,6 +17,8 @@ export type PresetLoadFileRow = {
     status: 'loading' | 'success' | 'error';
     error?: string;
     progress?: number;
+    loadedBytes?: number;
+    totalBytes?: number | null;
 };
 
 interface PresetLoadingDialogProps {
@@ -23,6 +26,9 @@ interface PresetLoadingDialogProps {
     presetLabel: string;
     rows: PresetLoadFileRow[];
     onClose: () => void;
+    loadingDescription?: string;
+    successDescription?: string;
+    errorDescription?: string;
 }
 
 export function PresetLoadingDialog({
@@ -30,6 +36,9 @@ export function PresetLoadingDialog({
     presetLabel,
     rows,
     onClose,
+    loadingDescription = 'Fetching files…',
+    successDescription = 'All files loaded successfully.',
+    errorDescription = 'Some files could not be loaded.',
 }: PresetLoadingDialogProps) {
     const isLoading = rows.some((r) => r.status === 'loading');
     const hasError = rows.some((r) => r.status === 'error');
@@ -46,10 +55,10 @@ export function PresetLoadingDialog({
                     <DialogTitle>{presetLabel}</DialogTitle>
                     <DialogDescription>
                         {isLoading
-                            ? 'Fetching files…'
+                            ? loadingDescription
                             : hasError
-                                ? 'Some files could not be loaded.'
-                                : 'All files loaded successfully.'}
+                                ? errorDescription
+                                : successDescription}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -71,7 +80,11 @@ export function PresetLoadingDialog({
                                 <div className="flex shrink-0 items-center gap-2">
                                     {typeof row.progress === 'number' && (
                                         <span className="text-xs tabular-nums text-gray-400">
-                                            {Math.round(row.progress * 100)}%
+                                            {formatDownloadProgress({
+                                                progress: row.progress,
+                                                loaded: row.loadedBytes ?? 0,
+                                                total: row.totalBytes ?? null,
+                                            })}
                                         </span>
                                     )}
                                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gray-400" />

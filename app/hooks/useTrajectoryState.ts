@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { VideoIndex } from '../lib/key-moments';
-import { getTrajectoryCompatibilityWarnings, getTrajectoryDurationMismatchWarning, isTrajectoryCompatibleWithVideo } from '../lib/trajectory-compatibility';
+import { getTrajectoryCompatibilityWarnings, getTrajectoryDimensionMismatchWarnings, getTrajectoryDurationMismatchWarning } from '../lib/trajectory-compatibility';
 import { parseTrajectoryMetadata } from '../lib/trajectory-parser';
 import type { TrajectoryMetadata, VideoDimensions } from '../lib/trajectory-types';
 
@@ -24,12 +24,9 @@ const createEmptyTrajectoryState = (): UploadedTrajectoryState => ({
     error: null,
 });
 
-const createRejectedTrajectoryState = (warning: string): UploadedTrajectoryState => ({
-    fileName: null,
-    metadata: null,
-    warnings: [warning],
-    error: null,
-});
+const appendUniqueWarning = (warnings: string[], warning: string): string[] => (
+    warnings.includes(warning) ? warnings : [...warnings, warning]
+);
 
 export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOptions) {
     const [trajectoryByIndex, setTrajectoryByIndex] = useState<[UploadedTrajectoryState, UploadedTrajectoryState]>([
@@ -49,38 +46,26 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
         });
     }, []);
 
-    const rejectTrajectoryOnDurationMismatch = useCallback((
-        videoIndex: VideoIndex,
-        metadata: TrajectoryMetadata,
-        videoDimensions: VideoDimensions | null,
-    ) => {
-        const durationMismatchWarning = getTrajectoryDurationMismatchWarning(metadata, videoDimensions);
-        if (!durationMismatchWarning) {
-            return false;
-        }
-
-        setTrajectoryState(videoIndex, createRejectedTrajectoryState(durationMismatchWarning));
-        return true;
-    }, [setTrajectoryState]);
-
     const handleTrajectoryFile = useCallback(async (videoIndex: VideoIndex, file: File): Promise<{ error?: string; warnings?: string[] }> => {
         try {
             const rawText = await file.text();
             const { metadata, warnings } = parseTrajectoryMetadata(rawText);
 
-            const durationMismatchWarning = getTrajectoryDurationMismatchWarning(metadata, videoDimensionsByIndex[videoIndex]);
-            if (durationMismatchWarning) {
-                setTrajectoryState(videoIndex, createRejectedTrajectoryState(durationMismatchWarning));
-                return { error: durationMismatchWarning };
-            }
+            const durationMismatchWarning = getTrajectoryDurationMismatchWarning(
+                metadata,
+                videoDimensionsByIndex[videoIndex],
+            );
+            const mergedWarnings = durationMismatchWarning
+                ? appendUniqueWarning(warnings, durationMismatchWarning)
+                : warnings;
 
             setTrajectoryState(videoIndex, {
                 fileName: file.name,
                 metadata,
-                warnings,
+                warnings: mergedWarnings,
                 error: null,
             });
-            return { warnings };
+            return mergedWarnings.length > 0 ? { warnings: mergedWarnings } : {};
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unable to parse trajectory metadata.';
             setTrajectoryState(videoIndex, {
@@ -115,11 +100,25 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
             return nextVideoDimensions;
         });
 
-        const trajectoryMetadata = trajectoryByIndex[videoIndex].metadata;
-        if (trajectoryMetadata) {
-            rejectTrajectoryOnDurationMismatch(videoIndex, trajectoryMetadata, dimensions);
-        }
-    }, [rejectTrajectoryOnDurationMismatch, trajectoryByIndex]);
+        setTrajectoryByIndex((prev) => {
+            const current = prev[videoIndex];
+            if (!current.metadata) {
+                return prev;
+            }
+
+            const durationMismatchWarning = getTrajectoryDurationMismatchWarning(current.metadata, dimensions);
+            if (!durationMismatchWarning) {
+                return prev;
+            }
+
+            const nextTrajectoryByIndex: [UploadedTrajectoryState, UploadedTrajectoryState] = [...prev] as [UploadedTrajectoryState, UploadedTrajectoryState];
+            nextTrajectoryByIndex[videoIndex] = {
+                ...current,
+                warnings: appendUniqueWarning(current.warnings, durationMismatchWarning),
+            };
+            return nextTrajectoryByIndex;
+        });
+    }, []);
 
     const clearVideoDimensions = useCallback((videoIndex: VideoIndex) => {
         setVideoDimensionsByIndex((prev) => {
@@ -159,7 +158,10 @@ export function useTrajectoryState({ hasVideoByIndex }: UseTrajectoryStateOption
             return true;
         }
 
-        return isTrajectoryCompatibleWithVideo(overlayMetadata, videoDimensionsByIndex[index as VideoIndex]);
+        return getTrajectoryDimensionMismatchWarnings(
+            overlayMetadata,
+            videoDimensionsByIndex[index as VideoIndex],
+        ).length === 0;
     }) as [boolean, boolean], [hasVideoByIndex, overlayMetadataByIndex, videoDimensionsByIndex]);
 
     return {

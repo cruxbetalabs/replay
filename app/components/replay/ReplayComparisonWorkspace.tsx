@@ -57,6 +57,7 @@ interface ReplayComparisonWorkspaceProps {
     cloudInProgressCount?: number;
     onCloudUpload?: (file: File) => Promise<void>;
     onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadCloudJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteCloudJob?: (jobId: string) => Promise<void>;
     onRefreshCloudJobs?: () => void;
     onClearCloudUpload?: () => void;
@@ -89,6 +90,7 @@ export function ReplayComparisonWorkspace({
     cloudInProgressCount = 0,
     onCloudUpload,
     onLoadCloudJob,
+    onDownloadCloudJobMetadata,
     onDeleteCloudJob,
     onRefreshCloudJobs,
     onClearCloudUpload,
@@ -269,6 +271,7 @@ export function ReplayComparisonWorkspace({
                             cloudInProgressCount={cloudInProgressCount}
                             onRefreshCloudJobs={onRefreshCloudJobs}
                             onLoadCloudJob={onLoadCloudJob}
+                            onDownloadCloudJobMetadata={onDownloadCloudJobMetadata}
                             onDeleteCloudJob={onDeleteCloudJob}
                             isLoadingCloudJob={isLoadingCloudJob}
                         />
@@ -376,6 +379,7 @@ export function ReplayComparisonWorkspace({
                 cloudJobs={cloudJobs}
                 onCloudUpload={onCloudUpload}
                 onLoadCloudJob={onLoadCloudJob}
+                onDownloadCloudJobMetadata={onDownloadCloudJobMetadata}
                 onDeleteCloudJob={onDeleteCloudJob}
                 onClearCloudUpload={onClearCloudUpload}
                 isLoadingCloudJob={isLoadingCloudJob}

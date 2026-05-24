@@ -66,6 +66,7 @@ interface ReplayComparisonSidebarProps {
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
     onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadCloudJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteCloudJob?: (jobId: string) => Promise<void>;
     onClearCloudUpload?: () => void;
     isLoadingCloudJob?: boolean;
@@ -126,6 +127,7 @@ export function ReplayComparisonSidebar({
     cloudJobs = [],
     onCloudUpload,
     onLoadCloudJob,
+    onDownloadCloudJobMetadata,
     onDeleteCloudJob,
     onClearCloudUpload,
     isLoadingCloudJob = false,
@@ -141,6 +143,7 @@ export function ReplayComparisonSidebar({
                         cloudJobs={cloudJobs}
                         onCloudUpload={onCloudUpload}
                         onLoadCloudJob={onLoadCloudJob}
+                        onDownloadCloudJobMetadata={onDownloadCloudJobMetadata}
                         onDeleteCloudJob={onDeleteCloudJob}
                         onClearCloudUpload={onClearCloudUpload}
                         isLoadingCloudJob={isLoadingCloudJob}

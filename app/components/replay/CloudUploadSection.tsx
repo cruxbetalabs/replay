@@ -18,6 +18,7 @@ interface CloudUploadSectionProps {
     jobs: CloudJobSummary[];
     onUpload: (file: File) => Promise<void>;
     onLoadJob: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteJob: (jobId: string) => Promise<void>;
     onClearActiveUpload?: () => void;
     isLoadingCloudJob?: boolean;
@@ -30,6 +31,7 @@ export function CloudUploadSection({
     jobs,
     onUpload,
     onLoadJob,
+    onDownloadJobMetadata,
     onDeleteJob,
     onClearActiveUpload,
     isLoadingCloudJob = false,
@@ -190,6 +192,7 @@ export function CloudUploadSection({
                                 dragSource="sidebar"
                                 disabled={isLoadingCloudJob}
                                 onLoad={(jobId, videoIndex) => void handleLoad(jobId, videoIndex)}
+                                onDownloadMetadata={onDownloadJobMetadata}
                                 onDelete={onDeleteJob}
                             />
                         ))}

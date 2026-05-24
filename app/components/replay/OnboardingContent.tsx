@@ -240,6 +240,7 @@ interface OnboardingContentProps {
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
     onLoadCloudJob?: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadCloudJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteCloudJob?: (jobId: string) => Promise<void>;
     onClearCloudUpload?: () => void;
     isLoadingCloudJob?: boolean;
@@ -254,6 +255,7 @@ export function OnboardingContent({
     cloudJobs = [],
     onCloudUpload,
     onLoadCloudJob,
+    onDownloadCloudJobMetadata,
     onDeleteCloudJob,
     onClearCloudUpload,
     isLoadingCloudJob = false,
@@ -303,6 +305,7 @@ export function OnboardingContent({
                             jobs={cloudJobs}
                             onUpload={onCloudUpload}
                             onLoadJob={onLoadCloudJob}
+                            onDownloadJobMetadata={onDownloadCloudJobMetadata}
                             onDeleteJob={onDeleteCloudJob}
                             onClearActiveUpload={onClearCloudUpload}
                             isLoadingCloudJob={isLoadingCloudJob}

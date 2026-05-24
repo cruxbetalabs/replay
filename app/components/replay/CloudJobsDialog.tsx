@@ -22,6 +22,7 @@ interface CloudJobsDialogProps {
     isBootstrapped: boolean;
     onRefresh: () => void;
     onLoadJob: (jobId: string, videoIndex: VideoIndex) => Promise<void>;
+    onDownloadJobMetadata?: (jobId: string) => Promise<void>;
     onDeleteJob: (jobId: string) => Promise<void>;
     isLoadingCloudJob?: boolean;
 }
@@ -33,6 +34,7 @@ export function CloudJobsDialog({
     isBootstrapped,
     onRefresh,
     onLoadJob,
+    onDownloadJobMetadata,
     onDeleteJob,
     isLoadingCloudJob = false,
 }: CloudJobsDialogProps) {
@@ -92,6 +94,7 @@ export function CloudJobsDialog({
                                 dragSource="dialog"
                                 disabled={isLoadingCloudJob}
                                 onLoad={(jobId, videoIndex) => void handleLoad(jobId, videoIndex)}
+                                onDownloadMetadata={onDownloadJobMetadata}
                                 onDelete={onDeleteJob}
                             />
                         ))}
