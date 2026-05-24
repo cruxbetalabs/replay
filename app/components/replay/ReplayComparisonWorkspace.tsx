@@ -54,7 +54,6 @@ interface ReplayComparisonWorkspaceProps {
     cloudBootstrapped?: boolean;
     cloudConnecting?: boolean;
     cloudConnectionError?: string | null;
-    onRetryCloudConnection?: () => void;
     cloudJobs?: CloudJobSummary[];
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudInProgressCount?: number;
@@ -90,7 +89,6 @@ export function ReplayComparisonWorkspace({
     cloudBootstrapped = false,
     cloudConnecting = false,
     cloudConnectionError = null,
-    onRetryCloudConnection,
     cloudJobs = [],
     cloudActiveUpload = null,
     cloudInProgressCount = 0,
@@ -383,7 +381,6 @@ export function ReplayComparisonWorkspace({
                 cloudBootstrapped={cloudBootstrapped}
                 cloudConnecting={cloudConnecting}
                 cloudConnectionError={cloudConnectionError}
-                onRetryCloudConnection={onRetryCloudConnection}
                 cloudActiveUpload={cloudActiveUpload}
                 cloudJobs={cloudJobs}
                 onCloudUpload={onCloudUpload}

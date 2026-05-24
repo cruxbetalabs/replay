@@ -52,7 +52,6 @@ export function ReplayComparisonStudio({
         isBootstrapped: cloudBootstrapped,
         isConnecting: cloudConnecting,
         connectionError: cloudConnectionError,
-        retryConnection: retryCloudConnection,
         jobs: cloudJobs,
         readyJobs: cloudReadyJobs,
         activeUpload: cloudActiveUpload,
@@ -386,7 +385,6 @@ export function ReplayComparisonStudio({
                 cloudBootstrapped={cloudBootstrapped}
                 cloudConnecting={cloudConnecting}
                 cloudConnectionError={cloudConnectionError}
-                onRetryCloudConnection={retryCloudConnection}
                 cloudJobs={cloudJobs}
                 cloudActiveUpload={cloudActiveUpload}
                 cloudInProgressCount={cloudInProgressCount}

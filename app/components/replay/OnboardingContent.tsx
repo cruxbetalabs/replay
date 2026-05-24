@@ -238,7 +238,6 @@ interface OnboardingContentProps {
     cloudBootstrapped?: boolean;
     cloudConnecting?: boolean;
     cloudConnectionError?: string | null;
-    onRetryCloudConnection?: () => void;
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
@@ -256,7 +255,6 @@ export function OnboardingContent({
     cloudBootstrapped = false,
     cloudConnecting = false,
     cloudConnectionError = null,
-    onRetryCloudConnection,
     cloudActiveUpload = null,
     cloudJobs = [],
     onCloudUpload,
@@ -309,7 +307,6 @@ export function OnboardingContent({
                             isBootstrapped={cloudBootstrapped}
                             isConnecting={cloudConnecting}
                             connectionError={cloudConnectionError}
-                            onRetryConnection={onRetryCloudConnection}
                             activeUpload={cloudActiveUpload}
                             jobs={cloudJobs}
                             onUpload={onCloudUpload}

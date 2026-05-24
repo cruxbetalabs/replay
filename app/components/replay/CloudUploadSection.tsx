@@ -16,7 +16,6 @@ interface CloudUploadSectionProps {
     isBootstrapped: boolean;
     isConnecting?: boolean;
     connectionError?: string | null;
-    onRetryConnection?: () => void;
     activeUpload: ActiveCloudUpload | null;
     jobs: CloudJobSummary[];
     onUpload: (file: File) => Promise<void>;
@@ -32,7 +31,6 @@ export function CloudUploadSection({
     isBootstrapped,
     isConnecting = false,
     connectionError = null,
-    onRetryConnection,
     activeUpload,
     jobs,
     onUpload,
@@ -168,38 +166,12 @@ export function CloudUploadSection({
                                     ? formatCloudUploadPhase(activeUpload!.phase)
                                     : 'Drop a video here or click to browse'}
                     </p>
-                    {showConnectionError ? (
-                        <p className="max-w-sm text-xs leading-relaxed text-red-600/90 dark:text-red-400/90">
-                            {connectionError}
-                        </p>
-                    ) : !isActivelyUploading && !isConnecting && (
+                    {!showConnectionError && !isActivelyUploading && !isConnecting && (
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                             .mp4 / .mov · up to {MAX_CLOUD_UPLOAD_BYTES / (1024 * 1024)} MB · {MAX_CLOUD_DURATION_SECONDS / 60} min max · kept {CLOUD_RETENTION_DAYS} days
                         </p>
                     )}
                 </div>
-
-                {showConnectionError && onRetryConnection && (
-                    <div className="mt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
-                            disabled={isConnecting}
-                            onClick={() => void onRetryConnection()}
-                        >
-                            {isConnecting ? (
-                                <>
-                                    <Loader2 className="size-3.5 animate-spin" />
-                                    Retrying…
-                                </>
-                            ) : (
-                                'Try again'
-                            )}
-                        </Button>
-                    </div>
-                )}
 
                 {activeUpload && activeUpload.phase === 'uploading' && (
                     <div className="mt-4 mx-auto max-w-xs">

@@ -64,7 +64,6 @@ interface ReplayComparisonSidebarProps {
     cloudBootstrapped?: boolean;
     cloudConnecting?: boolean;
     cloudConnectionError?: string | null;
-    onRetryCloudConnection?: () => void;
     cloudActiveUpload?: ActiveCloudUpload | null;
     cloudJobs?: CloudJobSummary[];
     onCloudUpload?: (file: File) => Promise<void>;
@@ -128,7 +127,6 @@ export function ReplayComparisonSidebar({
     cloudBootstrapped = false,
     cloudConnecting = false,
     cloudConnectionError = null,
-    onRetryCloudConnection,
     cloudActiveUpload = null,
     cloudJobs = [],
     onCloudUpload,
@@ -147,7 +145,6 @@ export function ReplayComparisonSidebar({
                         cloudBootstrapped={cloudBootstrapped}
                         cloudConnecting={cloudConnecting}
                         cloudConnectionError={cloudConnectionError}
-                        onRetryCloudConnection={onRetryCloudConnection}
                         cloudActiveUpload={cloudActiveUpload}
                         cloudJobs={cloudJobs}
                         onCloudUpload={onCloudUpload}
