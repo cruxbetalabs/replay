@@ -40,10 +40,14 @@ export function CloudUploadSection({
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const isBusy = activeUpload !== null
-        && activeUpload.phase !== 'ready'
-        && activeUpload.phase !== 'failed'
-        && activeUpload.phase !== 'idle';
+    const isActivelyUploading = activeUpload !== null && (
+        activeUpload.phase === 'probing'
+        || activeUpload.phase === 'creating'
+        || activeUpload.phase === 'uploading'
+        || activeUpload.phase === 'completing'
+    );
+
+    const showUploadError = activeUpload?.phase === 'failed';
 
     const handleFiles = useCallback(async (files: FileList | File[]) => {
         const file = Array.from(files).find(isSupportedCloudVideo);
@@ -86,10 +90,10 @@ export function CloudUploadSection({
                         inputRef.current?.click();
                     }
                 }}
-                onClick={() => !isBusy && inputRef.current?.click()}
+                onClick={() => !isActivelyUploading && inputRef.current?.click()}
                 onDragOver={(event) => {
                     event.preventDefault();
-                    if (!isBusy) {
+                    if (!isActivelyUploading) {
                         setIsDragging(true);
                     }
                 }}
@@ -97,7 +101,7 @@ export function CloudUploadSection({
                 onDrop={(event) => {
                     event.preventDefault();
                     setIsDragging(false);
-                    if (!isBusy && isBootstrapped) {
+                    if (!isActivelyUploading && isBootstrapped) {
                         void handleFiles(event.dataTransfer.files);
                     }
                 }}
@@ -106,7 +110,7 @@ export function CloudUploadSection({
                     isDragging
                         ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30'
                         : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600',
-                    isBusy || !isBootstrapped ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
+                    isActivelyUploading || !isBootstrapped ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                 ].join(' ')}
             >
                 <input
@@ -114,7 +118,7 @@ export function CloudUploadSection({
                     type="file"
                     accept="video/mp4,video/quicktime,.mp4,.mov"
                     className="hidden"
-                    disabled={isBusy || !isBootstrapped}
+                    disabled={isActivelyUploading || !isBootstrapped}
                     onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = '';
@@ -125,7 +129,7 @@ export function CloudUploadSection({
                 />
 
                 <div className="flex flex-col items-center gap-2">
-                    {isBusy ? (
+                    {isActivelyUploading ? (
                         <Loader2 className="size-8 text-blue-500 animate-spin" />
                     ) : (
                         <CloudUpload className="size-8 text-gray-400 dark:text-gray-500" />
@@ -133,11 +137,11 @@ export function CloudUploadSection({
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {!isBootstrapped
                             ? 'Connecting to Replay Cloud…'
-                            : isBusy
+                            : isActivelyUploading
                                 ? formatCloudUploadPhase(activeUpload!.phase)
                                 : 'Drop a video here or click to browse'}
                     </p>
-                    {!isBusy && (
+                    {!isActivelyUploading && (
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                             .mp4 / .mov · up to {MAX_CLOUD_UPLOAD_BYTES / (1024 * 1024)} MB · {MAX_CLOUD_DURATION_SECONDS / 60} min max · kept {CLOUD_RETENTION_DAYS} days
                         </p>
@@ -158,7 +162,7 @@ export function CloudUploadSection({
                     </div>
                 )}
 
-                {activeUpload && activeUpload.phase === 'failed' && (
+                {showUploadError && (
                     <div className="mt-3 flex items-start justify-center gap-2 text-sm text-red-600 dark:text-red-400">
                         <span>{activeUpload.error ?? 'Upload failed.'}</span>
                         {onClearActiveUpload && (

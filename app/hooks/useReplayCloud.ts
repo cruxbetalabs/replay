@@ -199,8 +199,8 @@ export function useReplayCloud() {
 
             setUploadPhase(created.job_id, file.name, 'completing', { uploadProgress: 1 });
             await completeCloudJob(created.job_id);
-            setUploadPhase(created.job_id, file.name, 'processing', { uploadProgress: 1 });
             await refreshJobs();
+            setActiveUpload(null);
             toast.success('Upload complete — processing in the cloud.');
         } catch (error) {
             const message = error instanceof ReplayCloudError
