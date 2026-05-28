@@ -5,7 +5,7 @@ import { formatCloudDuration, formatCloudFileSize } from './cloud-job-utils';
 
 let activePreview: HTMLElement | null = null;
 
-export function createCloudJobDragPreview(
+function createCloudJobDragPreview(
     job: CloudJobSummary,
     source: CloudJobDragSource,
 ): HTMLElement {

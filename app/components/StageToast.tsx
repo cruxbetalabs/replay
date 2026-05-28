@@ -18,10 +18,10 @@ interface StageToastProps {
 }
 
 function ResultIcon({ status }: { status: ProcessResult['status'] }) {
-    if (status === 'success') return <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />;
-    if (status === 'error') return <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />;
-    if (status === 'warning') return <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" />;
-    return <Ban className="h-3.5 w-3.5 shrink-0 text-white/30" />;
+    if (status === 'success') return <CheckCircle2 className="size-3.5 shrink-0 text-green-400" />;
+    if (status === 'error') return <AlertCircle className="size-3.5 shrink-0 text-red-400" />;
+    if (status === 'warning') return <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />;
+    return <Ban className="size-3.5 shrink-0 text-white/30" />;
 }
 
 const kindLabel: Record<ProcessResult['kind'], string> = {
@@ -48,7 +48,7 @@ export function StageToast({ results, onClose }: StageToastProps) {
                     className="shrink-0 rounded p-0.5 text-white/30 transition-colors hover:text-white/70"
                     aria-label="Dismiss"
                 >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="size-3.5" />
                 </button>
             </div>
             <div className="space-y-1.5 px-4 pb-3.5">

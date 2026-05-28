@@ -11,6 +11,7 @@ import type {
     TrajectoryVector2D,
     VelocityColorPreset,
 } from '../lib/trajectory-types';
+import { EMPTY_STRING_ARRAY } from '../lib/empty-arrays';
 
 interface TrajectoryOverlayProps {
     containerRef: RefObject<HTMLDivElement | null>;
@@ -232,7 +233,7 @@ export function TrajectoryOverlay({
     enabled,
     showBlackBackground,
     historyWindowSec = null,
-    visibleTrackNames = [],
+    visibleTrackNames = EMPTY_STRING_ARRAY,
     showPose = true,
     poseColor = DEFAULT_POSE_COLOR,
     landmarkOverrides = null,

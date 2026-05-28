@@ -134,14 +134,6 @@ export function CloudJobDragProvider({ children }: { children: ReactNode }) {
     );
 }
 
-export function useCloudJobDrag() {
-    const context = useContext(CloudJobDragContext);
-    if (!context) {
-        throw new Error('useCloudJobDrag must be used within CloudJobDragProvider');
-    }
-    return context;
-}
-
 export function useCloudJobDragOptional() {
     return useContext(CloudJobDragContext);
 }

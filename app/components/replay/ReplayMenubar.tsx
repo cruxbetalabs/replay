@@ -21,6 +21,7 @@ import {
 import type { PresetComparison } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { CloudJobSummary } from '../../lib/replay-cloud/types';
+import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 import { CloudJobsDialog } from './CloudJobsDialog';
 import { AltKeyShortcutLabel } from '../AltKeyShortcutLabel';
 import { isTypingTarget } from '../../hooks/useKeyboardShortcuts';
@@ -46,7 +47,7 @@ function AboutDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                     >
-                        <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <ExternalLinkIcon className="size-3.5 shrink-0 text-muted-foreground" />
                         View on GitHub
                     </a>
                 </div>
@@ -99,7 +100,7 @@ export function ReplayMenubar({
     onLoadPreset,
     cloudEnabled = false,
     cloudBootstrapped = false,
-    cloudJobs = [],
+    cloudJobs = EMPTY_CLOUD_JOBS,
     cloudInProgressCount = 0,
     onRefreshCloudJobs,
     onLoadCloudJob,
@@ -161,7 +162,7 @@ export function ReplayMenubar({
                             onSelect={() => window.open(COMPANY_URL, '_blank', 'noopener,noreferrer')}
                         >
                             Crux Beta Labs
-                            <ExternalLinkIcon className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                            <ExternalLinkIcon className="ml-auto size-3.5 text-muted-foreground" />
                         </MenubarItem>
                     </MenubarContent>
                 </MenubarMenu>

@@ -112,7 +112,7 @@ export function OverlaySettingsPanel({
                         className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         aria-label="Remove metadata"
                     >
-                        <RotateCcwIcon className="h-4 w-4" />
+                        <RotateCcwIcon className="size-4" />
                     </button>
                 ) : undefined
             }
@@ -180,6 +180,7 @@ export function OverlaySettingsPanel({
                         step={0.1}
                         value={trajectoryHistorySeconds}
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
+                        aria-label="Trajectory history length"
                         className="h-2 range-track-fill w-full"
                         style={{ '--range-progress': `${historyFillPercent}%` } as React.CSSProperties}
                     />
@@ -196,7 +197,7 @@ export function OverlaySettingsPanel({
                             ] as const).map(({ label, bgr }) => (
                                 <div key={label} className="flex items-center gap-2">
                                     <div
-                                        className="h-4 w-4 shrink-0 rounded-sm border border-black/10 dark:border-white/10"
+                                        className="size-4 shrink-0 rounded-sm border border-black/10 dark:border-white/10"
                                         style={{ backgroundColor: `rgb(${bgr[2]}, ${bgr[1]}, ${bgr[0]})` }}
                                     />
                                     <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-400">{label}</span>

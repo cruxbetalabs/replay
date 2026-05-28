@@ -9,6 +9,7 @@ import type { TrajectoryMetadata, VideoDimensions } from '../lib/trajectory-type
 import { useIKDrag } from '../hooks/useIKDrag';
 import { hasCloudJobDrag, readCloudJobDragId } from '../lib/replay-cloud/drag';
 import { useCloudJobDragOptional } from './replay/CloudJobDragContext';
+import { EMPTY_STRING_ARRAY } from '../lib/empty-arrays';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             trajectoryFileName = null,
             canRenderTrajectory = true,
             trajectoryHistoryWindowSec = null,
-            visibleTrajectoryTrackNames = [],
+            visibleTrajectoryTrackNames = EMPTY_STRING_ARRAY,
             showPose = true,
             onRemoveTrajectory: _onRemoveTrajectory,
             onVideoMetadataLoad,
@@ -394,7 +395,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                     {isCloudJobDraggingOver && (
                         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-blue-900/80 backdrop-blur-sm pointer-events-none">
                             <svg
-                                className="h-10 w-10 text-white/70"
+                                className="size-10 text-white/70"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -414,7 +415,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                     {isDraggingOver && !isCloudJobDraggingOver && (
                         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-cyan-900/80 backdrop-blur-sm pointer-events-none">
                             <svg
-                                className="h-10 w-10 text-white/70"
+                                className="size-10 text-white/70"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -433,7 +434,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
 
                     {isProcessing && !replaceConfirm && (
                         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/60 backdrop-blur-sm">
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                            <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                             <p className="text-xs font-medium text-white/80">Processing…</p>
                         </div>
                     )}
@@ -500,7 +501,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 htmlFor={videoInputId}
                                 className={`flex flex-1 cursor-pointer flex-col items-center justify-center transition-colors ${isDraggingOver ? 'bg-cyan-50' : 'hover:bg-gray-50'}`}
                             >
-                                <CloudUpload className="mb-3 h-12 w-12 text-gray-400" />
+                                <CloudUpload className="mb-3 size-12 text-gray-400" />
                                 <p className="mb-1 text-base font-bold text-gray-500">{label}</p>
                                 <p className="text-sm text-gray-400">
                                     Drop files here or click to upload a video
@@ -514,10 +515,10 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 Accepted formats
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                                <FormatChip icon={<FileVideo className="h-3 w-3" />} label="MP4" />
-                                <FormatChip icon={<FileVideo className="h-3 w-3" />} label="MOV" />
+                                <FormatChip icon={<FileVideo className="size-3" />} label="MP4" />
+                                <FormatChip icon={<FileVideo className="size-3" />} label="MOV" />
                                 <FormatChip
-                                    icon={<FileJson2 className="h-3 w-3" />}
+                                    icon={<FileJson2 className="size-3" />}
                                     label="JSON (Metadata)"
 
                                 />
@@ -530,6 +531,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             ref={videoInputRef}
                             type="file"
                             accept="video/mp4,video/quicktime,.mp4,.mov"
+                            aria-label={`Choose video file for ${label}`}
                             onChange={handleVideoInputChange}
                             className="hidden"
                         />
@@ -537,6 +539,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             ref={jsonInputRef}
                             type="file"
                             accept=".json,application/json"
+                            aria-label={`Choose trajectory metadata JSON for ${label}`}
                             onChange={handleJsonInputChange}
                             className="hidden"
                         />
@@ -557,7 +560,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                         {isCalculating && (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90">
                                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                                    <span className="inline-block size-2 animate-pulse rounded-full bg-blue-500" />
                                     Calculating FPS…
                                 </div>
                             </div>
@@ -572,6 +575,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             autoPlay={false}
                             playsInline
                             preload="metadata"
+                            aria-label={`${label} comparison video`}
                             aria-busy={isCalculating}
                             onLoadedData={() => {
                                 console.debug('[VideoDropzone] Video loaded', { label, src: videoUrl });
@@ -635,6 +639,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                         max={100}
                                         value={Math.round(maskOpacity * 100)}
                                         onChange={(e) => setMaskOpacity(Number(e.target.value) / 100)}
+                                        aria-label="Overlay mask opacity"
                                         className="w-20 cursor-pointer"
                                         style={{ accentColor: 'rgba(255,255,255,0.75)' }}
                                     />

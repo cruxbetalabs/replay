@@ -20,6 +20,7 @@ import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajecto
 import type { PresetComparison } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
+import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 
 export interface SplitViewContentProps {
     calculatingByIndex: [boolean, boolean];
@@ -89,7 +90,7 @@ export function ReplayComparisonWorkspace({
     cloudBootstrapped = false,
     cloudConnecting = false,
     cloudConnectionError = null,
-    cloudJobs = [],
+    cloudJobs = EMPTY_CLOUD_JOBS,
     cloudActiveUpload = null,
     cloudInProgressCount = 0,
     onCloudUpload,

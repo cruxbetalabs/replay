@@ -9,13 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CloudUploadSection } from './CloudUploadSection';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
+import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
     return (
         <div className="flex gap-3">
-            <div className="shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400 mt-0.5">
+            <div className="shrink-0 size-6 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400 mt-0.5">
                 {number}
             </div>
             <div className="flex-1 min-w-0">
@@ -88,7 +89,7 @@ function CodeBlock({ lines }: { lines: string[] }) {
 }
 
 function FeatureRow({ icon, label, desc }: { icon: React.ReactElement<{ className?: string }>; label: string; desc: string }) {
-    const sized = React.cloneElement(icon, { className: 'w-6 h-6 text-blue-400 dark:text-blue-500' });
+    const sized = React.cloneElement(icon, { className: 'size-6 text-blue-400 dark:text-blue-500' });
     return (
         <div className="flex items-start gap-2.5">
             <div className="shrink-0 mt-0.5">{sized}</div>
@@ -159,7 +160,7 @@ function LocalCliOnboarding({ videoPath, setVideoPath, commandLines }: {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
-                <Download className="w-3 h-3" />
+                <Download className="size-3" />
                 <code className="font-mono">cruxes</code> on PyPI
             </a>
 
@@ -198,11 +199,12 @@ function LocalCliOnboarding({ videoPath, setVideoPath, commandLines }: {
                         Run <InlineCode>cruxes body-trajectory</InlineCode> on your video to extract pose and
                         trajectory data:
                     </p>
-                    <label className="block space-y-1.5">
+                    <label htmlFor="onboarding-video-path" className="block space-y-1.5">
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                             Video file path
                         </span>
                         <Input
+                            id="onboarding-video-path"
                             type="text"
                             value={videoPath}
                             onChange={(event) => setVideoPath(event.target.value)}
@@ -256,7 +258,7 @@ export function OnboardingContent({
     cloudConnecting = false,
     cloudConnectionError = null,
     cloudActiveUpload = null,
-    cloudJobs = [],
+    cloudJobs = EMPTY_CLOUD_JOBS,
     onCloudUpload,
     onLoadCloudJob,
     onDownloadCloudJobMetadata,
