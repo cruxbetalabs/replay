@@ -1,15 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import { buildKeyMomentPosition, type KeyMoment, type VideoIndex } from '../lib/key-moments';
+import {
+    buildKeyMomentPosition,
+    readKeyMomentEditorState,
+    resolveActivePlaybackSliderIndex,
+    writeKeyMomentEditorState,
+    type KeyMoment,
+    type KeyMomentEditorState,
+    type VideoIndex,
+} from '../lib/key-moments';
 import type { KeyboardShortcut } from './useKeyboardShortcuts';
-
-interface PersistedKeyMomentState {
-    version: 1;
-    keyMoments: KeyMoment[];
-    selectedKeyMomentId: string | null;
-}
 
 interface UseKeyMomentsOptions {
     currentTimeByIndex: [number, number];
@@ -19,57 +21,9 @@ interface UseKeyMomentsOptions {
     videoRefs: [RefObject<HTMLVideoElement | null>, RefObject<HTMLVideoElement | null>];
     seekToByIndex: [(time: number) => void, (time: number) => void];
     persistenceKey?: string | null;
-    onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
+    presetKeyMomentsStamp?: string | null;
+    presetKeyMomentsState?: KeyMomentEditorState | null;
 }
-
-const isKeyMomentPosition = (value: unknown): value is NonNullable<KeyMoment['positions'][number]> => {
-    return typeof value === 'object'
-        && value !== null
-        && 'time' in value
-        && 'frame' in value
-        && typeof value.time === 'number'
-        && Number.isFinite(value.time)
-        && typeof value.frame === 'number'
-        && Number.isFinite(value.frame);
-};
-
-const isKeyMoment = (value: unknown): value is KeyMoment => {
-    return typeof value === 'object'
-        && value !== null
-        && 'id' in value
-        && typeof value.id === 'string'
-        && 'positions' in value
-        && Array.isArray(value.positions)
-        && value.positions.length === 2
-        && value.positions.every((position) => position === null || isKeyMomentPosition(position));
-};
-
-const parsePersistedKeyMomentState = (rawValue: string): PersistedKeyMomentState | null => {
-    try {
-        const parsedValue: unknown = JSON.parse(rawValue);
-        if (
-            typeof parsedValue !== 'object'
-            || parsedValue === null
-            || !('version' in parsedValue)
-            || parsedValue.version !== 1
-            || !('keyMoments' in parsedValue)
-            || !Array.isArray(parsedValue.keyMoments)
-            || !parsedValue.keyMoments.every(isKeyMoment)
-            || !('selectedKeyMomentId' in parsedValue)
-            || (parsedValue.selectedKeyMomentId !== null && typeof parsedValue.selectedKeyMomentId !== 'string')
-        ) {
-            return null;
-        }
-
-        return {
-            version: 1,
-            keyMoments: parsedValue.keyMoments,
-            selectedKeyMomentId: parsedValue.selectedKeyMomentId,
-        };
-    } catch {
-        return null;
-    }
-};
 
 export function useKeyMoments({
     currentTimeByIndex,
@@ -79,11 +33,43 @@ export function useKeyMoments({
     videoRefs,
     seekToByIndex,
     persistenceKey = null,
-    onKeyMomentsChange,
+    presetKeyMomentsStamp = null,
+    presetKeyMomentsState = null,
 }: UseKeyMomentsOptions) {
-    const [activePlaybackSliderIndex, setActivePlaybackSliderIndex] = useState<VideoIndex | null>(null);
-    const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
-    const [selectedKeyMomentId, setSelectedKeyMomentId] = useState<string | null>(null);
+    const [editorState, setEditorState] = useState<KeyMomentEditorState>(() => readKeyMomentEditorState(persistenceKey));
+    const [prevPersistenceKey, setPrevPersistenceKey] = useState(persistenceKey);
+    const [playbackSliderChoice, setPlaybackSliderChoice] = useState<VideoIndex | null>(null);
+    const appliedPresetStampRef = useRef<string | null>(null);
+
+    if (persistenceKey !== prevPersistenceKey) {
+        setPrevPersistenceKey(persistenceKey);
+        setEditorState(readKeyMomentEditorState(persistenceKey));
+        appliedPresetStampRef.current = null;
+    }
+
+    if (
+        presetKeyMomentsStamp
+        && presetKeyMomentsStamp !== appliedPresetStampRef.current
+        && presetKeyMomentsState
+    ) {
+        appliedPresetStampRef.current = presetKeyMomentsStamp;
+        setEditorState(presetKeyMomentsState);
+    }
+
+    const { keyMoments, selectedKeyMomentId } = editorState;
+
+    useEffect(() => {
+        writeKeyMomentEditorState(persistenceKey, editorState);
+    }, [editorState, persistenceKey]);
+
+    const updateEditorState = useCallback((updater: (prev: KeyMomentEditorState) => KeyMomentEditorState) => {
+        setEditorState((prev) => updater(prev));
+    }, []);
+
+    const activePlaybackSliderIndex = useMemo(
+        () => resolveActivePlaybackSliderIndex(playbackSliderChoice, hasVideoByIndex),
+        [hasVideoByIndex, playbackSliderChoice],
+    );
 
     const pauseVideos = useCallback(() => {
         videoRefs[0].current?.pause();
@@ -94,37 +80,42 @@ export function useKeyMoments({
         const sourceTime = currentTimeByIndex[sourceIndex];
         const nextKeyMomentId = crypto.randomUUID();
 
-        setSelectedKeyMomentId(nextKeyMomentId);
-        setKeyMoments((prev) => [
-            ...prev,
-            {
-                id: nextKeyMomentId,
-                positions: [
-                    hasVideoByIndex[0] ? buildKeyMomentPosition(sourceTime, fpsByIndex[0]) : null,
-                    hasVideoByIndex[1] ? buildKeyMomentPosition(sourceTime, fpsByIndex[1]) : null,
-                ],
-            },
-        ]);
-    }, [currentTimeByIndex, fpsByIndex, hasVideoByIndex]);
+        updateEditorState((prev) => ({
+            selectedKeyMomentId: nextKeyMomentId,
+            keyMoments: [
+                ...prev.keyMoments,
+                {
+                    id: nextKeyMomentId,
+                    positions: [
+                        hasVideoByIndex[0] ? buildKeyMomentPosition(sourceTime, fpsByIndex[0]) : null,
+                        hasVideoByIndex[1] ? buildKeyMomentPosition(sourceTime, fpsByIndex[1]) : null,
+                    ],
+                },
+            ],
+        }));
+    }, [currentTimeByIndex, fpsByIndex, hasVideoByIndex, updateEditorState]);
 
     const updateKeyMomentFromVideo = useCallback((keyMomentId: string, sourceIndex: VideoIndex) => {
         const sourceTime = currentTimeByIndex[sourceIndex];
         const sourceFps = fpsByIndex[sourceIndex];
 
-        setKeyMoments((prev) => prev.map((keyMoment) => {
-            if (keyMoment.id !== keyMomentId) {
-                return keyMoment;
-            }
+        updateEditorState((prev) => ({
+            ...prev,
+            keyMoments: prev.keyMoments.map((keyMoment) => {
+                if (keyMoment.id !== keyMomentId) {
+                    return keyMoment;
+                }
 
-            const nextPositions: KeyMoment['positions'] = [...keyMoment.positions];
-            nextPositions[sourceIndex] = buildKeyMomentPosition(sourceTime, sourceFps);
+                const nextPositions: KeyMoment['positions'] = [...keyMoment.positions];
+                nextPositions[sourceIndex] = buildKeyMomentPosition(sourceTime, sourceFps);
 
-            return {
-                ...keyMoment,
-                positions: nextPositions,
-            };
+                return {
+                    ...keyMoment,
+                    positions: nextPositions,
+                };
+            }),
         }));
-    }, [currentTimeByIndex, fpsByIndex]);
+    }, [currentTimeByIndex, fpsByIndex, updateEditorState]);
 
     const jumpToKeyMoment = useCallback((keyMomentId: string) => {
         const keyMoment = keyMoments.find((entry) => entry.id === keyMomentId);
@@ -132,7 +123,10 @@ export function useKeyMoments({
             return;
         }
 
-        setSelectedKeyMomentId(keyMomentId);
+        updateEditorState((prev) => ({
+            ...prev,
+            selectedKeyMomentId: keyMomentId,
+        }));
         pauseVideos();
 
         const position1 = keyMoment.positions[0];
@@ -145,95 +139,42 @@ export function useKeyMoments({
         if (position2 && hasVideoByIndex[1]) {
             seekToByIndex[1](position2.time);
         }
-    }, [hasVideoByIndex, keyMoments, pauseVideos, seekToByIndex]);
+    }, [hasVideoByIndex, keyMoments, pauseVideos, seekToByIndex, updateEditorState]);
 
     const deleteKeyMoment = useCallback((keyMomentId: string) => {
-        setKeyMoments((prev) => prev.filter((keyMoment) => keyMoment.id !== keyMomentId));
-        setSelectedKeyMomentId((prev) => (prev === keyMomentId ? null : prev));
-    }, []);
+        updateEditorState((prev) => ({
+            keyMoments: prev.keyMoments.filter((keyMoment) => keyMoment.id !== keyMomentId),
+            selectedKeyMomentId: prev.selectedKeyMomentId === keyMomentId ? null : prev.selectedKeyMomentId,
+        }));
+    }, [updateEditorState]);
 
     const setKeyMomentTime = useCallback((keyMomentId: string, videoIndex: VideoIndex, nextTime: number) => {
         const videoDuration = durationByIndex[videoIndex];
         const boundedTime = Math.max(0, Math.min(nextTime, videoDuration || nextTime));
         const sourceFps = fpsByIndex[videoIndex];
 
-        setSelectedKeyMomentId(keyMomentId);
-        setKeyMoments((prev) => prev.map((keyMoment) => {
-            if (keyMoment.id !== keyMomentId) {
-                return keyMoment;
-            }
+        updateEditorState((prev) => ({
+            selectedKeyMomentId: keyMomentId,
+            keyMoments: prev.keyMoments.map((keyMoment) => {
+                if (keyMoment.id !== keyMomentId) {
+                    return keyMoment;
+                }
 
-            const nextPositions: KeyMoment['positions'] = [...keyMoment.positions];
-            nextPositions[videoIndex] = buildKeyMomentPosition(boundedTime, sourceFps);
+                const nextPositions: KeyMoment['positions'] = [...keyMoment.positions];
+                nextPositions[videoIndex] = buildKeyMomentPosition(boundedTime, sourceFps);
 
-            return {
-                ...keyMoment,
-                positions: nextPositions,
-            };
+                return {
+                    ...keyMoment,
+                    positions: nextPositions,
+                };
+            }),
         }));
 
         pauseVideos();
         if (hasVideoByIndex[videoIndex]) {
             seekToByIndex[videoIndex](boundedTime);
         }
-    }, [durationByIndex, fpsByIndex, hasVideoByIndex, pauseVideos, seekToByIndex]);
-
-    useEffect(() => {
-        if (!persistenceKey || typeof window === 'undefined') {
-            return;
-        }
-
-        const persistedState = parsePersistedKeyMomentState(window.localStorage.getItem(persistenceKey) ?? '');
-        if (!persistedState) {
-            setKeyMoments([]);
-            setSelectedKeyMomentId(null);
-            return;
-        }
-
-        setKeyMoments(persistedState.keyMoments);
-        setSelectedKeyMomentId(persistedState.selectedKeyMomentId);
-    }, [persistenceKey]);
-
-    useEffect(() => {
-        if (!persistenceKey || typeof window === 'undefined') {
-            return;
-        }
-
-        const nextPersistedState: PersistedKeyMomentState = {
-            version: 1,
-            keyMoments,
-            selectedKeyMomentId,
-        };
-
-        window.localStorage.setItem(persistenceKey, JSON.stringify(nextPersistedState));
-    }, [keyMoments, persistenceKey, selectedKeyMomentId]);
-
-    useEffect(() => {
-        onKeyMomentsChange?.(keyMoments);
-    }, [keyMoments, onKeyMomentsChange]);
-
-    useEffect(() => {
-        if (activePlaybackSliderIndex === 0 && !hasVideoByIndex[0]) {
-            setActivePlaybackSliderIndex(hasVideoByIndex[1] ? 1 : null);
-            return;
-        }
-
-        if (activePlaybackSliderIndex === 1 && !hasVideoByIndex[1]) {
-            setActivePlaybackSliderIndex(hasVideoByIndex[0] ? 0 : null);
-            return;
-        }
-
-        if (activePlaybackSliderIndex == null) {
-            if (hasVideoByIndex[0]) {
-                setActivePlaybackSliderIndex(0);
-                return;
-            }
-
-            if (hasVideoByIndex[1]) {
-                setActivePlaybackSliderIndex(1);
-            }
-        }
-    }, [activePlaybackSliderIndex, hasVideoByIndex]);
+    }, [durationByIndex, fpsByIndex, hasVideoByIndex, pauseVideos, seekToByIndex, updateEditorState]);
 
     const keyMomentShortcuts = useMemo<KeyboardShortcut[]>(() => keyMoments.slice(0, 9).map((keyMoment, index) => ({
         key: String(index + 1),
@@ -266,19 +207,24 @@ export function useKeyMoments({
     }), [activePlaybackSliderIndex, createKeyMomentFromVideo, hasVideoByIndex]);
 
     const deselectKeyMoment = useCallback(() => {
-        setSelectedKeyMomentId(null);
-    }, []);
+        updateEditorState((prev) => ({
+            ...prev,
+            selectedKeyMomentId: null,
+        }));
+    }, [updateEditorState]);
 
     const resetKeyMoments = useCallback((nextKeyMoments: KeyMoment[], nextSelectedId: string | null) => {
-        setKeyMoments(nextKeyMoments);
-        setSelectedKeyMomentId(nextSelectedId);
+        setEditorState({
+            keyMoments: nextKeyMoments,
+            selectedKeyMomentId: nextSelectedId,
+        });
     }, []);
 
     return {
         activePlaybackSliderIndex,
         keyMoments,
         selectedKeyMomentId,
-        setActivePlaybackSliderIndex,
+        setActivePlaybackSliderIndex: setPlaybackSliderChoice,
         createKeyMomentFromVideo,
         updateKeyMomentFromVideo,
         jumpToKeyMoment,
