@@ -14,13 +14,7 @@ import type { VideoIndex } from '../../lib/key-moments';
 import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
 import { CloudJobDragProvider } from './CloudJobDragContext';
 
-interface ReplayComparisonStudioProps {
-    onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
-}
-
-export function ReplayComparisonStudio({
-    onKeyMomentsChange,
-}: ReplayComparisonStudioProps) {
+export function ReplayComparisonStudio() {
     const {
         videoUrl1: videoUrl,
         videoUrl2,
@@ -376,7 +370,6 @@ export function ReplayComparisonStudio({
                 onRemoveVideo1={handleRemoveVideo1}
                 onRemoveVideo2={handleRemoveVideo2}
                 onRemoveMetadata={handleRemoveAllMetadata}
-                onKeyMomentsChange={onKeyMomentsChange}
                 presets={PRESET_COMPARISONS}
                 onLoadPreset={loadPreset}
                 presetKeyMomentsStamp={presetKeyMomentsStamp}

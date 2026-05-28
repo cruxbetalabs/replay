@@ -95,7 +95,7 @@ export function VideoControlPanel({
                         className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         aria-label="Remove videos"
                     >
-                        <RotateCcwIcon className="h-4 w-4" />
+                        <RotateCcwIcon className="size-4" />
                     </button>
                 ) : undefined
             }

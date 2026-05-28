@@ -20,6 +20,7 @@ import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajecto
 import type { PresetComparison } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
+import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 
 export interface SplitViewContentProps {
     calculatingByIndex: [boolean, boolean];
@@ -45,7 +46,6 @@ interface ReplayComparisonWorkspaceProps {
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
     onRemoveMetadata?: () => void;
-    onKeyMomentsChange?: (keyMoments: KeyMoment[]) => void;
     presets?: PresetComparison[];
     onLoadPreset?: (preset: PresetComparison) => void;
     presetKeyMomentsStamp?: string | null;
@@ -80,7 +80,6 @@ export function ReplayComparisonWorkspace({
     onRemoveVideo1,
     onRemoveVideo2,
     onRemoveMetadata,
-    onKeyMomentsChange,
     presets,
     onLoadPreset,
     presetKeyMomentsStamp,
@@ -89,7 +88,7 @@ export function ReplayComparisonWorkspace({
     cloudBootstrapped = false,
     cloudConnecting = false,
     cloudConnectionError = null,
-    cloudJobs = [],
+    cloudJobs = EMPTY_CLOUD_JOBS,
     cloudActiveUpload = null,
     cloudInProgressCount = 0,
     onCloudUpload,
@@ -153,7 +152,6 @@ export function ReplayComparisonWorkspace({
         setKeyMomentTime,
         keyMomentShortcuts,
         addKeyShortcut,
-        resetKeyMoments,
     } = useKeyMoments({
         currentTimeByIndex: [currentTime1, currentTime2],
         durationByIndex: [duration1, duration2],
@@ -162,7 +160,8 @@ export function ReplayComparisonWorkspace({
         videoRefs,
         seekToByIndex: [seekTo1, seekTo2],
         persistenceKey: storageKey,
-        onKeyMomentsChange,
+        presetKeyMomentsStamp,
+        presetKeyMomentsState,
     });
 
     const {
@@ -181,15 +180,6 @@ export function ReplayComparisonWorkspace({
     } = useOverlaySettings({ availableTrajectoryTrackNames });
 
     const effectiveVisibleTrackNames = showTrajectory ? visibleTrajectoryTrackNames : [];
-
-    const appliedPresetStampRef = useRef<string | null>(null);
-    useEffect(() => {
-        if (!presetKeyMomentsStamp || presetKeyMomentsStamp === appliedPresetStampRef.current) return;
-        appliedPresetStampRef.current = presetKeyMomentsStamp;
-        if (presetKeyMomentsState) {
-            resetKeyMoments(presetKeyMomentsState.keyMoments, presetKeyMomentsState.selectedKeyMomentId);
-        }
-    }, [presetKeyMomentsStamp, presetKeyMomentsState, resetKeyMoments]);
 
     const resolvedViewMode = viewMode === 'overlay' && !hasAnyOverlayData ? 'split' : viewMode;
 

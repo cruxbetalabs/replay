@@ -110,7 +110,7 @@ export function KeyMomentTimeline({
                                 onSelectKeyMoment(entry.id);
                                 setDraggingKeyMomentId(entry.id);
                             }}
-                            className={`pointer-events-auto absolute top-1/2 flex rounded-sm h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center border-2 shadow transition-transform hover:scale-110 focus:outline-none ${accentClassName} ${isSelected ? 'scale-110' : ''}`.trim()}
+                            className={`pointer-events-auto absolute top-1/2 flex rounded-sm size-4 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center border-2 shadow transition-transform hover:scale-110 focus:outline-none ${accentClassName} ${isSelected ? 'scale-110' : ''}`.trim()}
                             style={{
                                 left: `${percent}%`,
                                 ...(isSelected ? { background: 'currentColor' } : {}),
@@ -118,7 +118,7 @@ export function KeyMomentTimeline({
                             aria-label={`Select key ${entry.index + 1}`}
                             title={`Key ${entry.index + 1}`}
                         >
-                            <span className={`block h-1.5 w-1.5 -rotate-45 rounded-full ${isSelected ? 'bg-white/20' : 'bg-current'}`} />
+                            <span className={`block size-1.5 -rotate-45 rounded-full ${isSelected ? 'bg-white/20' : 'bg-current'}`} />
                             <span className="sr-only">Key {entry.index + 1}</span>
                         </button>
                     );

@@ -69,9 +69,9 @@ export function PresetLoadingDialog({
                             className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5"
                         >
                             {row.kind === 'video' ? (
-                                <FileVideo className="h-4 w-4 shrink-0 text-gray-400" />
+                                <FileVideo className="size-4 shrink-0 text-gray-400" />
                             ) : (
-                                <FileJson2 className="h-4 w-4 shrink-0 text-gray-400" />
+                                <FileJson2 className="size-4 shrink-0 text-gray-400" />
                             )}
                             <span className="flex-1 truncate text-xs font-medium text-gray-700">
                                 {row.fileName}
@@ -87,15 +87,15 @@ export function PresetLoadingDialog({
                                             })}
                                         </span>
                                     )}
-                                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gray-400" />
+                                    <Loader2 className="size-4 shrink-0 animate-spin text-gray-400" />
                                 </div>
                             )}
                             {row.status === 'success' && (
-                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
                             )}
                             {row.status === 'error' && (
                                 <XCircle
-                                    className="h-4 w-4 shrink-0 text-red-500"
+                                    className="size-4 shrink-0 text-red-500"
                                     aria-label={row.error}
                                 />
                             )}

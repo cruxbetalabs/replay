@@ -82,7 +82,7 @@ export function OverlayComparisonStage({
                             key={source.label}
                             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5"
                         >
-                            <span className={`h-2.5 w-2.5 rounded-full ${source.accentClassName}`} />
+                            <span className={`size-2.5 rounded-full ${source.accentClassName}`} />
                             <span className={`text-xs font-medium ${source.textClassName}`}>{source.label}</span>
                         </div>
                     ))}

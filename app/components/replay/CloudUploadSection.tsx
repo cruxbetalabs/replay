@@ -133,6 +133,7 @@ export function CloudUploadSection({
                     ref={inputRef}
                     type="file"
                     accept="video/mp4,video/quicktime,.mp4,.mov"
+                    aria-label="Upload video to Replay Cloud"
                     className="hidden"
                     disabled={isActivelyUploading || !canUpload}
                     onChange={(event) => {

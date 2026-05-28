@@ -43,7 +43,7 @@ interface CloudJobCardActionsProps {
     onDelete: () => void;
 }
 
-export function CloudJobCardActions({
+function CloudJobCardActions({
     disabled = false,
     showAddMenu = true,
     showDownloadMetadata = false,

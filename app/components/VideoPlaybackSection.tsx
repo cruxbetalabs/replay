@@ -72,6 +72,7 @@ export function VideoPlaybackSection({
                     max={duration || 0}
                     step={seekAmount}
                     value={currentTime}
+                    aria-label={`${label} playback position`}
                     onFocus={() => onActivateSlider(videoIndex)}
                     onPointerDown={() => onActivateSlider(videoIndex)}
                     onChange={(event) => onSeek(parseFloat(event.target.value))}

@@ -7,6 +7,7 @@ import { OnboardingContent } from './OnboardingContent';
 import type { KeyMoment, VideoIndex } from '../../lib/key-moments';
 import type { VelocityColorPreset } from '../../lib/trajectory-types';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
+import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 
 interface ReplayComparisonSidebarProps {
     // Video control
@@ -128,7 +129,7 @@ export function ReplayComparisonSidebar({
     cloudConnecting = false,
     cloudConnectionError = null,
     cloudActiveUpload = null,
-    cloudJobs = [],
+    cloudJobs = EMPTY_CLOUD_JOBS,
     onCloudUpload,
     onLoadCloudJob,
     onDownloadCloudJobMetadata,
