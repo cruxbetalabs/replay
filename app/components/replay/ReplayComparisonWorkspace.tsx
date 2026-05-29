@@ -17,7 +17,7 @@ import { useVideoControl } from '../../hooks/useVideoControl';
 import { useVideoFps } from '../../hooks/useVideoFps';
 import type { KeyMoment } from '../../lib/key-moments';
 import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajectory-types';
-import type { PresetComparison } from '../../lib/presets';
+import type { PresetComparison, PresetLoadTarget } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
 import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
@@ -47,7 +47,7 @@ interface ReplayComparisonWorkspaceProps {
     onRemoveVideo2?: () => void;
     onRemoveMetadata?: () => void;
     presets?: PresetComparison[];
-    onLoadPreset?: (preset: PresetComparison) => void;
+    onLoadPreset?: (preset: PresetComparison, target: PresetLoadTarget) => void;
     presetKeyMomentsStamp?: string | null;
     presetKeyMomentsState?: { keyMoments: KeyMoment[]; selectedKeyMomentId: string | null } | null;
     cloudEnabled?: boolean;

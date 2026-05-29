@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ExternalLinkIcon } from 'lucide-react';
 import {
     Menubar,
@@ -9,6 +9,9 @@ import {
     MenubarMenu,
     MenubarSeparator,
     MenubarShortcut,
+    MenubarSub,
+    MenubarSubContent,
+    MenubarSubTrigger,
     MenubarTrigger,
 } from '@/components/ui/menubar';
 import {
@@ -18,7 +21,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
-import type { PresetComparison } from '../../lib/presets';
+import { isComparisonPreset, type PresetComparison, type PresetLoadTarget } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { CloudJobSummary } from '../../lib/replay-cloud/types';
 import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
@@ -72,7 +75,7 @@ interface ReplayMenubarProps {
     onOpenShortcuts: () => void;
     // Presets
     presets?: PresetComparison[];
-    onLoadPreset?: (preset: PresetComparison) => void;
+    onLoadPreset?: (preset: PresetComparison, target: PresetLoadTarget) => void;
     // Cloud
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
@@ -112,6 +115,10 @@ export function ReplayMenubar({
     const [aboutOpen, setAboutOpen] = useState(false);
     const [cloudJobsOpen, setCloudJobsOpen] = useState(false);
     const hasCloudMenu = cloudEnabled && onRefreshCloudJobs && onLoadCloudJob && onDeleteCloudJob;
+    const { comparisonPresets, videoPresets } = useMemo(() => ({
+        comparisonPresets: presets?.filter(isComparisonPreset) ?? [],
+        videoPresets: presets?.filter((preset) => !isComparisonPreset(preset)) ?? [],
+    }), [presets]);
 
     useEffect(() => {
         if (!hasCloudMenu) {
@@ -167,6 +174,50 @@ export function ReplayMenubar({
                     </MenubarContent>
                 </MenubarMenu>
 
+                {/* Examples */}
+                {presets && presets.length > 0 && onLoadPreset && (
+                    <MenubarMenu>
+                        <MenubarTrigger>Examples</MenubarTrigger>
+                        <MenubarContent>
+                            {comparisonPresets.length > 0 && (
+                                <MenubarSub>
+                                    <MenubarSubTrigger>Comparisons</MenubarSubTrigger>
+                                    <MenubarSubContent>
+                                        {comparisonPresets.map((preset) => (
+                                            <MenubarItem
+                                                key={preset.id}
+                                                onSelect={() => onLoadPreset(preset, 'comparison')}
+                                            >
+                                                {preset.label}
+                                            </MenubarItem>
+                                        ))}
+                                    </MenubarSubContent>
+                                </MenubarSub>
+                            )}
+                            {videoPresets.length > 0 && (
+                                <MenubarSub>
+                                    <MenubarSubTrigger>Videos</MenubarSubTrigger>
+                                    <MenubarSubContent>
+                                        {videoPresets.map((preset) => (
+                                            <MenubarSub key={preset.id}>
+                                                <MenubarSubTrigger>{preset.label}</MenubarSubTrigger>
+                                                <MenubarSubContent>
+                                                    <MenubarItem onSelect={() => onLoadPreset(preset, { slot: 0 })}>
+                                                        Load into Video 1 (left)
+                                                    </MenubarItem>
+                                                    <MenubarItem onSelect={() => onLoadPreset(preset, { slot: 1 })}>
+                                                        Load into Video 2 (right)
+                                                    </MenubarItem>
+                                                </MenubarSubContent>
+                                            </MenubarSub>
+                                        ))}
+                                    </MenubarSubContent>
+                                </MenubarSub>
+                            )}
+                        </MenubarContent>
+                    </MenubarMenu>
+                )}
+
                 {/* Videos */}
                 {hasVideoControls && (
                     <MenubarMenu>
@@ -199,20 +250,6 @@ export function ReplayMenubar({
                                     </MenubarItem>
                                 </>
                             )}
-                        </MenubarContent>
-                    </MenubarMenu>
-                )}
-
-                {/* Examples */}
-                {presets && presets.length > 0 && onLoadPreset && (
-                    <MenubarMenu>
-                        <MenubarTrigger>Examples</MenubarTrigger>
-                        <MenubarContent>
-                            {presets.map((preset) => (
-                                <MenubarItem key={preset.id} onSelect={() => onLoadPreset(preset)}>
-                                    {preset.label}
-                                </MenubarItem>
-                            ))}
                         </MenubarContent>
                     </MenubarMenu>
                 )}

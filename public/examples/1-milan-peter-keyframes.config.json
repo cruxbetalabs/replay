@@ -1,0 +1,32 @@
+{
+    "version": 1,
+    "keyMoments": [
+        {
+            "id": "cd4aceea-9338-4707-a793-634d55cd85f9",
+            "positions": [
+                {
+                    "time": 4.621916957462014,
+                    "frame": 129
+                },
+                {
+                    "time": 0.4699953574169799,
+                    "frame": 13
+                }
+            ]
+        },
+        {
+            "id": "c57bea96-7a18-4734-87ef-66584af3810c",
+            "positions": [
+                {
+                    "time": 5.153475040717027,
+                    "frame": 144
+                },
+                {
+                    "time": 1.1505954259281015,
+                    "frame": 32
+                }
+            ]
+        }
+    ],
+    "selectedKeyMomentId": "c57bea96-7a18-4734-87ef-66584af3810c"
+}
