@@ -9,7 +9,7 @@ import { useTrajectoryState } from '../../hooks/useTrajectoryState';
 import { useVideoSources } from '../../hooks/useVideoSources';
 import { getKeyMomentStorageKey, type KeyMoment } from '../../lib/key-moments';
 import type { KeyMomentPresetState } from '../../lib/presets';
-import { PRESET_COMPARISONS, type PresetComparison } from '../../lib/presets';
+import { PRESET_COMPARISONS, type PresetComparison, type PresetLoadTarget } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import { PresetLoadingDialog, type PresetLoadFileRow } from './PresetLoadingDialog';
 import { CloudJobDragProvider } from './CloudJobDragContext';
@@ -196,32 +196,127 @@ export function ReplayComparisonStudio() {
         }
     }, [cloudJobs, cloudReadyJobs, downloadCloudJobMetadata]);
 
-    const loadPreset = useCallback(async (preset: PresetComparison) => {
-        clearVideoDimensions(0);
-        clearVideoDimensions(1);
+    const loadPreset = useCallback(async (preset: PresetComparison, target: PresetLoadTarget) => {
+        if (target === 'comparison') {
+            if (!preset.right) {
+                return;
+            }
 
-        const videoFile1 = new File([], preset.left.videoFileName, { type: 'video/mp4' });
-        replaceVideoSource(0, videoFile1, preset.left.videoUrl);
-        if (preset.right) {
+            clearVideoDimensions(0);
+            clearVideoDimensions(1);
+
+            const videoFile1 = new File([], preset.left.videoFileName, { type: 'video/mp4' });
+            replaceVideoSource(0, videoFile1, preset.left.videoUrl);
             const videoFile2 = new File([], preset.right.videoFileName, { type: 'video/mp4' });
             replaceVideoSource(1, videoFile2, preset.right.videoUrl);
+
+            const initialRows: PresetLoadFileRow[] = [
+                { key: 'left-meta', fileName: preset.left.metadataFileName, kind: 'metadata', status: 'loading' },
+                { key: 'right-meta', fileName: preset.right.metadataFileName, kind: 'metadata', status: 'loading' },
+            ];
+
+            if (preset.keyMomentsUrl) {
+                const kmFileName = preset.keyMomentsUrl.split('/').pop() ?? 'keyframes.json';
+                initialRows.push({ key: 'keymoments', fileName: kmFileName, kind: 'keymoments', status: 'loading' });
+            }
+
+            setPresetLoadDescriptions({
+                loading: 'Fetching files…',
+                success: 'All files loaded successfully.',
+                error: 'Some files could not be loaded.',
+            });
+            setPresetLoadLabel(preset.label);
+            setPresetLoadRows(initialRows);
+            setPresetLoadOpen(true);
+
+            const updateRow = (key: string, update: Partial<PresetLoadFileRow>) =>
+                setPresetLoadRows((prev) => prev.map((r) => r.key === key ? { ...r, ...update } : r));
+
+            const successMap: Record<string, boolean> = {};
+
+            const fetchMeta = async (index: 0 | 1, key: string, url: string, fileName: string) => {
+                try {
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    const blob = await r.blob();
+                    await handleTrajectoryFile(index, new File([blob], fileName, { type: 'application/json' }));
+                    updateRow(key, { status: 'success' });
+                    successMap[key] = true;
+                } catch (err) {
+                    updateRow(key, { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
+                    successMap[key] = false;
+                }
+            };
+
+            const fetches: Promise<void>[] = [
+                fetchMeta(0, 'left-meta', preset.left.metadataUrl, preset.left.metadataFileName),
+                fetchMeta(1, 'right-meta', preset.right.metadataUrl, preset.right.metadataFileName),
+            ];
+
+            if (preset.keyMomentsUrl) {
+                const kmUrl = preset.keyMomentsUrl;
+                fetches.push(
+                    (async () => {
+                        try {
+                            const r = await fetch(kmUrl);
+                            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                            const data = await r.json() as unknown;
+                            if (
+                                data !== null
+                                && typeof data === 'object'
+                                && 'version' in data && data.version === 1
+                                && 'keyMoments' in data && Array.isArray(data.keyMoments)
+                            ) {
+                                const parsed = data as { keyMoments: KeyMoment[]; selectedKeyMomentId?: string | null };
+                                setPresetKeyMomentsState({
+                                    keyMoments: parsed.keyMoments,
+                                    selectedKeyMomentId: parsed.selectedKeyMomentId ?? null,
+                                });
+                                setPresetKeyMomentsStamp(crypto.randomUUID());
+                            }
+                            updateRow('keymoments', { status: 'success' });
+                            successMap['keymoments'] = true;
+                        } catch (err) {
+                            updateRow('keymoments', { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
+                            successMap['keymoments'] = false;
+                        }
+                    })()
+                );
+            }
+
+            await Promise.all(fetches);
+
+            if (
+                Object.keys(successMap).length === initialRows.length
+                && Object.values(successMap).every(Boolean)
+            ) {
+                setTimeout(() => setPresetLoadOpen(false), 1200);
+            }
+
+            return;
         }
 
+        const slot = target.slot;
+        clearVideoDimensions(slot);
+
+        const videoFile = new File([], preset.left.videoFileName, { type: 'video/mp4' });
+        replaceVideoSource(slot, videoFile, preset.left.videoUrl);
+
         const initialRows: PresetLoadFileRow[] = [
-            { key: 'left-meta', fileName: preset.left.metadataFileName, kind: 'metadata', status: 'loading' },
-            ...(preset.right ? [{ key: 'right-meta', fileName: preset.right.metadataFileName, kind: 'metadata' as const, status: 'loading' as const }] : []),
+            {
+                key: 'meta',
+                fileName: preset.left.metadataFileName,
+                kind: 'metadata',
+                status: 'loading',
+            },
         ];
-        if (preset.keyMomentsUrl) {
-            const kmFileName = preset.keyMomentsUrl.split('/').pop() ?? 'keyframes.json';
-            initialRows.push({ key: 'keymoments', fileName: kmFileName, kind: 'keymoments', status: 'loading' });
-        }
 
         setPresetLoadDescriptions({
             loading: 'Fetching files…',
             success: 'All files loaded successfully.',
             error: 'Some files could not be loaded.',
         });
-        setPresetLoadLabel(preset.label);
+        setPresetLoadLabel(`${preset.label} → Video ${slot + 1}`);
         setPresetLoadRows(initialRows);
         setPresetLoadOpen(true);
 
@@ -230,57 +325,17 @@ export function ReplayComparisonStudio() {
 
         const successMap: Record<string, boolean> = {};
 
-        const fetchMeta = async (index: 0 | 1, key: string, url: string, fileName: string) => {
-            try {
-                const r = await fetch(url);
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                const blob = await r.blob();
-                await handleTrajectoryFile(index, new File([blob], fileName, { type: 'application/json' }));
-                updateRow(key, { status: 'success' });
-                successMap[key] = true;
-            } catch (err) {
-                updateRow(key, { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
-                successMap[key] = false;
-            }
-        };
-
-        const fetches: Promise<void>[] = [
-            fetchMeta(0, 'left-meta', preset.left.metadataUrl, preset.left.metadataFileName),
-            ...(preset.right ? [fetchMeta(1, 'right-meta', preset.right.metadataUrl, preset.right.metadataFileName)] : []),
-        ];
-
-        if (preset.keyMomentsUrl) {
-            const kmUrl = preset.keyMomentsUrl;
-            fetches.push(
-                (async () => {
-                    try {
-                        const r = await fetch(kmUrl);
-                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                        const data = await r.json() as unknown;
-                        if (
-                            data !== null
-                            && typeof data === 'object'
-                            && 'version' in data && data.version === 1
-                            && 'keyMoments' in data && Array.isArray(data.keyMoments)
-                        ) {
-                            const parsed = data as { keyMoments: KeyMoment[]; selectedKeyMomentId?: string | null };
-                            setPresetKeyMomentsState({
-                                keyMoments: parsed.keyMoments,
-                                selectedKeyMomentId: parsed.selectedKeyMomentId ?? null,
-                            });
-                            setPresetKeyMomentsStamp(crypto.randomUUID());
-                        }
-                        updateRow('keymoments', { status: 'success' });
-                        successMap['keymoments'] = true;
-                    } catch (err) {
-                        updateRow('keymoments', { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
-                        successMap['keymoments'] = false;
-                    }
-                })()
-            );
+        try {
+            const r = await fetch(preset.left.metadataUrl);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const blob = await r.blob();
+            await handleTrajectoryFile(slot, new File([blob], preset.left.metadataFileName, { type: 'application/json' }));
+            updateRow('meta', { status: 'success' });
+            successMap['meta'] = true;
+        } catch (err) {
+            updateRow('meta', { status: 'error', error: err instanceof Error ? err.message : 'Failed to load' });
+            successMap['meta'] = false;
         }
-
-        await Promise.all(fetches);
 
         if (
             Object.keys(successMap).length === initialRows.length
