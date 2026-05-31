@@ -151,13 +151,11 @@
     appearance: none;
     height: var(--range-height);
     border-radius: 9999px;
-    background: linear-gradient(
-      to right,
-      var(--range-fill-color) 0%,
-      var(--range-fill-color) var(--range-progress, 0%),
-      var(--range-track-color) var(--range-progress, 0%),
-      var(--range-track-color) 100%
-    );
+    background: linear-gradient(to right,
+        var(--range-fill-color) 0%,
+        var(--range-fill-color) var(--range-progress, 0%),
+        var(--range-track-color) var(--range-progress, 0%),
+        var(--range-track-color) 100%);
     cursor: pointer;
   }
 

@@ -431,52 +431,52 @@ export function ReplayComparisonStudio() {
         <CloudJobDragProvider>
             <>
                 <ReplayComparisonWorkspace
-                splitViewContent={splitViewContent}
-                videoRefs={videoRefs}
-                videoUrls={videoUrls}
-                overlayMetadataByIndex={overlayMetadataByIndex}
-                canRenderOverlayByIndex={canRenderOverlayByIndex}
-                availableTrajectoryTrackNames={availableTrajectoryTrackNames}
-                hasAnyOverlayData={hasAnyOverlayData}
-                hasPoseMetadata={hasPoseMetadata}
-                storageKey={keyMomentStorageKey}
-                showRemoveVideos
-                onRemoveVideo1={handleRemoveVideo1}
-                onRemoveVideo2={handleRemoveVideo2}
-                onRemoveAllVideos={handleRemoveAllVideos}
-                hasMetadata1={overlayMetadataByIndex[0] != null}
-                hasMetadata2={overlayMetadataByIndex[1] != null}
-                onRemoveMetadata1={handleRemoveMetadata1}
-                onRemoveMetadata2={handleRemoveMetadata2}
-                onRemoveAllMetadata={handleRemoveAllMetadata}
-                presets={PRESET_COMPARISONS}
-                onLoadPreset={loadPreset}
-                presetKeyMomentsStamp={presetKeyMomentsStamp}
-                presetKeyMomentsState={presetKeyMomentsState}
-                cloudEnabled={cloudEnabled}
-                cloudBootstrapped={cloudBootstrapped}
-                cloudConnecting={cloudConnecting}
-                cloudConnectionError={cloudConnectionError}
-                cloudJobs={cloudJobs}
-                cloudActiveUpload={cloudActiveUpload}
-                cloudInProgressCount={cloudInProgressCount}
-                onCloudUpload={uploadCloudVideo}
-                onLoadCloudJob={handleLoadCloudJob}
-                onDownloadCloudJobMetadata={handleDownloadCloudJobMetadata}
-                onDeleteCloudJob={deleteCloudJob}
-                onRefreshCloudJobs={refreshCloudJobs}
-                onClearCloudUpload={clearCloudActiveUpload}
-                isLoadingCloudJob={isLoadingCloudJob}
-            />
-            <PresetLoadingDialog
-                open={presetLoadOpen}
-                presetLabel={presetLoadLabel}
-                rows={presetLoadRows}
-                loadingDescription={presetLoadDescriptions.loading}
-                successDescription={presetLoadDescriptions.success}
-                errorDescription={presetLoadDescriptions.error}
-                onClose={() => setPresetLoadOpen(false)}
-            />
+                    splitViewContent={splitViewContent}
+                    videoRefs={videoRefs}
+                    videoUrls={videoUrls}
+                    overlayMetadataByIndex={overlayMetadataByIndex}
+                    canRenderOverlayByIndex={canRenderOverlayByIndex}
+                    availableTrajectoryTrackNames={availableTrajectoryTrackNames}
+                    hasAnyOverlayData={hasAnyOverlayData}
+                    hasPoseMetadata={hasPoseMetadata}
+                    storageKey={keyMomentStorageKey}
+                    showRemoveVideos
+                    onRemoveVideo1={handleRemoveVideo1}
+                    onRemoveVideo2={handleRemoveVideo2}
+                    onRemoveAllVideos={handleRemoveAllVideos}
+                    hasMetadata1={overlayMetadataByIndex[0] != null}
+                    hasMetadata2={overlayMetadataByIndex[1] != null}
+                    onRemoveMetadata1={handleRemoveMetadata1}
+                    onRemoveMetadata2={handleRemoveMetadata2}
+                    onRemoveAllMetadata={handleRemoveAllMetadata}
+                    presets={PRESET_COMPARISONS}
+                    onLoadPreset={loadPreset}
+                    presetKeyMomentsStamp={presetKeyMomentsStamp}
+                    presetKeyMomentsState={presetKeyMomentsState}
+                    cloudEnabled={cloudEnabled}
+                    cloudBootstrapped={cloudBootstrapped}
+                    cloudConnecting={cloudConnecting}
+                    cloudConnectionError={cloudConnectionError}
+                    cloudJobs={cloudJobs}
+                    cloudActiveUpload={cloudActiveUpload}
+                    cloudInProgressCount={cloudInProgressCount}
+                    onCloudUpload={uploadCloudVideo}
+                    onLoadCloudJob={handleLoadCloudJob}
+                    onDownloadCloudJobMetadata={handleDownloadCloudJobMetadata}
+                    onDeleteCloudJob={deleteCloudJob}
+                    onRefreshCloudJobs={refreshCloudJobs}
+                    onClearCloudUpload={clearCloudActiveUpload}
+                    isLoadingCloudJob={isLoadingCloudJob}
+                />
+                <PresetLoadingDialog
+                    open={presetLoadOpen}
+                    presetLabel={presetLoadLabel}
+                    rows={presetLoadRows}
+                    loadingDescription={presetLoadDescriptions.loading}
+                    successDescription={presetLoadDescriptions.success}
+                    errorDescription={presetLoadDescriptions.error}
+                    onClose={() => setPresetLoadOpen(false)}
+                />
             </>
         </CloudJobDragProvider>
     );
