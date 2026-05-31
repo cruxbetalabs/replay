@@ -67,13 +67,32 @@ export function ReplayComparisonStudio() {
 
     const handleRemoveVideo1 = useCallback(() => {
         clearVideoDimensions(0);
+        clearTrajectory(0);
         removeVideo(0);
-    }, [clearVideoDimensions, removeVideo]);
+    }, [clearVideoDimensions, clearTrajectory, removeVideo]);
 
     const handleRemoveVideo2 = useCallback(() => {
         clearVideoDimensions(1);
+        clearTrajectory(1);
         removeVideo(1);
-    }, [clearVideoDimensions, removeVideo]);
+    }, [clearVideoDimensions, clearTrajectory, removeVideo]);
+
+    const handleRemoveAllVideos = useCallback(() => {
+        clearVideoDimensions(0);
+        clearVideoDimensions(1);
+        clearTrajectory(0);
+        clearTrajectory(1);
+        removeVideo(0);
+        removeVideo(1);
+    }, [clearVideoDimensions, clearTrajectory, removeVideo]);
+
+    const handleRemoveMetadata1 = useCallback(() => {
+        clearTrajectory(0);
+    }, [clearTrajectory]);
+
+    const handleRemoveMetadata2 = useCallback(() => {
+        clearTrajectory(1);
+    }, [clearTrajectory]);
 
     const handleRemoveAllMetadata = useCallback(() => {
         clearTrajectory(0);
@@ -424,7 +443,12 @@ export function ReplayComparisonStudio() {
                 showRemoveVideos
                 onRemoveVideo1={handleRemoveVideo1}
                 onRemoveVideo2={handleRemoveVideo2}
-                onRemoveMetadata={handleRemoveAllMetadata}
+                onRemoveAllVideos={handleRemoveAllVideos}
+                hasMetadata1={overlayMetadataByIndex[0] != null}
+                hasMetadata2={overlayMetadataByIndex[1] != null}
+                onRemoveMetadata1={handleRemoveMetadata1}
+                onRemoveMetadata2={handleRemoveMetadata2}
+                onRemoveAllMetadata={handleRemoveAllMetadata}
                 presets={PRESET_COMPARISONS}
                 onLoadPreset={loadPreset}
                 presetKeyMomentsStamp={presetKeyMomentsStamp}

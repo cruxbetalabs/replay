@@ -45,7 +45,12 @@ interface ReplayComparisonWorkspaceProps {
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
-    onRemoveMetadata?: () => void;
+    onRemoveAllVideos?: () => void;
+    hasMetadata1?: boolean;
+    hasMetadata2?: boolean;
+    onRemoveMetadata1?: () => void;
+    onRemoveMetadata2?: () => void;
+    onRemoveAllMetadata?: () => void;
     presets?: PresetComparison[];
     onLoadPreset?: (preset: PresetComparison, target: PresetLoadTarget) => void;
     presetKeyMomentsStamp?: string | null;
@@ -79,7 +84,12 @@ export function ReplayComparisonWorkspace({
     showRemoveVideos = true,
     onRemoveVideo1,
     onRemoveVideo2,
-    onRemoveMetadata,
+    onRemoveAllVideos,
+    hasMetadata1 = false,
+    hasMetadata2 = false,
+    onRemoveMetadata1,
+    onRemoveMetadata2,
+    onRemoveAllMetadata,
     presets,
     onLoadPreset,
     presetKeyMomentsStamp,
@@ -255,7 +265,12 @@ export function ReplayComparisonWorkspace({
                             showRemoveVideos={showRemoveVideos}
                             onRemoveVideo1={onRemoveVideo1}
                             onRemoveVideo2={onRemoveVideo2}
-                            onRemoveMetadata={onRemoveMetadata}
+                            onRemoveAllVideos={onRemoveAllVideos}
+                            hasMetadata1={hasMetadata1}
+                            hasMetadata2={hasMetadata2}
+                            onRemoveMetadata1={onRemoveMetadata1}
+                            onRemoveMetadata2={onRemoveMetadata2}
+                            onRemoveAllMetadata={onRemoveAllMetadata}
                             onOpenShortcuts={() => setShortcutsOpen(true)}
                             presets={presets}
                             onLoadPreset={onLoadPreset}
@@ -345,9 +360,6 @@ export function ReplayComparisonWorkspace({
                 onUpdateKeyMomentFromVideo1={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 0)}
                 onUpdateKeyMomentFromVideo2={(keyMomentId) => updateKeyMomentFromVideo(keyMomentId, 1)}
                 onDeleteKeyMoment={deleteKeyMoment}
-                showRemoveVideos={showRemoveVideos}
-                onRemoveVideo1={onRemoveVideo1}
-                onRemoveVideo2={onRemoveVideo2}
                 direction={direction}
                 speed={speed}
                 hasAnyOverlayData={hasAnyOverlayData}
@@ -365,7 +377,6 @@ export function ReplayComparisonWorkspace({
                 onShowAllTracks={showAllTrajectoryTracks}
                 onHideAllTracks={hideAllTrajectoryTracks}
                 onToggleTrajectoryTrack={toggleTrajectoryTrack}
-                onRemoveMetadata={onRemoveMetadata}
                 velocityColorPreset={velocityColorPreset}
                 cloudEnabled={cloudEnabled}
                 cloudBootstrapped={cloudBootstrapped}

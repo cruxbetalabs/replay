@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { RotateCcwIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { SidebarPanel } from './SidebarPanel';
 import type { VelocityColorPreset } from '../lib/trajectory-types';
@@ -69,7 +68,6 @@ interface OverlaySettingsPanelProps {
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
-    onRemoveMetadata?: () => void;
     velocityColorPreset?: VelocityColorPreset | null;
 }
 
@@ -88,7 +86,6 @@ export function OverlaySettingsPanel({
     onShowAllTracks,
     onHideAllTracks,
     onToggleTrajectoryTrack,
-    onRemoveMetadata,
     velocityColorPreset,
 }: OverlaySettingsPanelProps) {
     const visibleTrackNameSet = useMemo(() => new Set(visibleTrajectoryTrackNames), [visibleTrajectoryTrackNames]);
@@ -104,20 +101,7 @@ export function OverlaySettingsPanel({
         <SidebarPanel
             title="Overlay Settings"
             className="flex-1 space-y-3"
-            action={
-                onRemoveMetadata ? (
-                    <button
-                        type="button"
-                        onClick={onRemoveMetadata}
-                        className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                        aria-label="Remove metadata"
-                    >
-                        <RotateCcwIcon className="size-4" />
-                    </button>
-                ) : undefined
-            }
         >
-
             <div className="space-y-4">
 
                 <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/60">
@@ -182,7 +166,7 @@ export function OverlaySettingsPanel({
                         onChange={(event) => onSetTrajectoryHistorySeconds(parseFloat(event.target.value))}
                         aria-label="Trajectory history length"
                         className="h-2 range-track-fill w-full"
-                        style={{ '--range-progress': `${historyFillPercent}%` } as React.CSSProperties}
+                        style={{ '--range-progress': `${historyFillPercent}%`, '--range-height': '0.5rem' } as React.CSSProperties}
                     />
                     <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-300">
                         <span>0.0s keeps the full history visible</span>

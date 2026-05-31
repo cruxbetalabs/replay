@@ -70,7 +70,12 @@ interface ReplayMenubarProps {
     showRemoveVideos?: boolean;
     onRemoveVideo1?: () => void;
     onRemoveVideo2?: () => void;
-    onRemoveMetadata?: () => void;
+    onRemoveAllVideos?: () => void;
+    hasMetadata1?: boolean;
+    hasMetadata2?: boolean;
+    onRemoveMetadata1?: () => void;
+    onRemoveMetadata2?: () => void;
+    onRemoveAllMetadata?: () => void;
     // Help
     onOpenShortcuts: () => void;
     // Presets
@@ -97,7 +102,12 @@ export function ReplayMenubar({
     showRemoveVideos = true,
     onRemoveVideo1,
     onRemoveVideo2,
-    onRemoveMetadata,
+    onRemoveAllVideos,
+    hasMetadata1 = false,
+    hasMetadata2 = false,
+    onRemoveMetadata1,
+    onRemoveMetadata2,
+    onRemoveAllMetadata,
     onOpenShortcuts,
     presets,
     onLoadPreset,
@@ -112,6 +122,8 @@ export function ReplayMenubar({
     isLoadingCloudJob = false,
 }: ReplayMenubarProps) {
     const hasVideoControls = showRemoveVideos && (hasVideo1 || hasVideo2);
+    const hasMetadataControls = onRemoveMetadata1 || onRemoveMetadata2 || onRemoveAllMetadata;
+    const hasAnyMetadata = hasMetadata1 || hasMetadata2;
     const [aboutOpen, setAboutOpen] = useState(false);
     const [cloudJobsOpen, setCloudJobsOpen] = useState(false);
     const hasCloudMenu = cloudEnabled && onRefreshCloudJobs && onLoadCloudJob && onDeleteCloudJob;
@@ -239,14 +251,52 @@ export function ReplayMenubar({
                                     Remove Video 2
                                 </MenubarItem>
                             )}
-                            {onRemoveMetadata && (
+                            {onRemoveAllVideos && (hasVideo1 || hasVideo2) && (
                                 <>
-                                    {(hasVideo1 || hasVideo2) && <MenubarSeparator />}
+                                    <MenubarSeparator />
                                     <MenubarItem
                                         className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
-                                        onSelect={onRemoveMetadata}
+                                        onSelect={onRemoveAllVideos}
                                     >
-                                        Remove Metadata
+                                        Remove all videos
+                                    </MenubarItem>
+                                </>
+                            )}
+                        </MenubarContent>
+                    </MenubarMenu>
+                )}
+
+                {/* Metadata */}
+                {hasMetadataControls && hasAnyMetadata && (
+                    <MenubarMenu>
+                        <MenubarTrigger>Metadata</MenubarTrigger>
+                        <MenubarContent>
+                            {hasMetadata1 && onRemoveMetadata1 && (
+                                <MenubarItem
+                                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                                    onSelect={onRemoveMetadata1}
+                                >
+                                    Remove Video 1&apos;s metadata
+                                </MenubarItem>
+                            )}
+                            {hasMetadata2 && onRemoveMetadata2 && (
+                                <MenubarItem
+                                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                                    onSelect={onRemoveMetadata2}
+                                >
+                                    Remove Video 2&apos;s metadata
+                                </MenubarItem>
+                            )}
+                            {onRemoveAllMetadata && (hasMetadata1 || hasMetadata2) && (
+                                <>
+                                    {(hasMetadata1 && onRemoveMetadata1) || (hasMetadata2 && onRemoveMetadata2)
+                                        ? <MenubarSeparator />
+                                        : null}
+                                    <MenubarItem
+                                        className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                                        onSelect={onRemoveAllMetadata}
+                                    >
+                                        Remove all metadata
                                     </MenubarItem>
                                 </>
                             )}

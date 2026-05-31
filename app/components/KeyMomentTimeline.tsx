@@ -9,6 +9,7 @@ interface KeyMomentTimelineProps {
     videoIndex: VideoIndex;
     selectedKeyMomentId: string | null;
     accentClassName: string;
+    trackClassName?: string;
     onSelectKeyMoment: (keyMomentId: string) => void;
     onDeselectKeyMoment: () => void;
     onChangeKeyMomentTime: (keyMomentId: string, time: number) => void;
@@ -34,6 +35,7 @@ export function KeyMomentTimeline({
     videoIndex,
     selectedKeyMomentId,
     accentClassName,
+    trackClassName,
     onSelectKeyMoment,
     onDeselectKeyMoment,
     onChangeKeyMomentTime,
@@ -93,7 +95,7 @@ export function KeyMomentTimeline({
         <div className="space-y-1">
             <div
                 ref={trackRef}
-                className="relative h-3 rounded-full bg-gray-200 dark:bg-gray-700"
+                className={`relative ${trackClassName ?? 'h-3 rounded-full bg-gray-200 dark:bg-gray-700'}`.trim()}
             >
                 {visibleMoments.map((entry) => {
                     const percent = getPercent(entry.position.time, duration);

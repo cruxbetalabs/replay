@@ -145,10 +145,12 @@
   .range-track-fill {
     --range-fill-color: #d97706;
     --range-track-color: #d1d5db;
+    --range-height: 0.75rem;
+    --range-thumb-size: 1rem;
     -webkit-appearance: none;
     appearance: none;
-    height: 0.75rem;
-    border-radius: 0.5rem;
+    height: var(--range-height);
+    border-radius: 9999px;
     background: linear-gradient(
       to right,
       var(--range-fill-color) 0%,
@@ -166,9 +168,9 @@
   .range-track-fill::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 1rem;
-    height: 1rem;
-    margin-top: -0.125rem;
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    margin-top: calc((var(--range-height) - var(--range-thumb-size)) / 2);
     border-radius: 9999px;
     border: 2px solid #fff;
     background: var(--range-fill-color);
@@ -177,21 +179,21 @@
   }
 
   .range-track-fill::-moz-range-track {
-    height: 0.75rem;
+    height: var(--range-height);
     border: none;
-    border-radius: 0.5rem;
+    border-radius: 9999px;
     background: var(--range-track-color);
   }
 
   .range-track-fill::-moz-range-progress {
-    height: 0.75rem;
-    border-radius: 0.5rem;
+    height: var(--range-height);
+    border-radius: 9999px;
     background: var(--range-fill-color);
   }
 
   .range-track-fill::-moz-range-thumb {
-    width: 1rem;
-    height: 1rem;
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
     border: 2px solid #fff;
     border-radius: 9999px;
     background: var(--range-fill-color);

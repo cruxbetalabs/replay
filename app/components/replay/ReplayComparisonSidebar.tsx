@@ -37,9 +37,6 @@ interface ReplayComparisonSidebarProps {
     onUpdateKeyMomentFromVideo1: (keyMomentId: string) => void;
     onUpdateKeyMomentFromVideo2: (keyMomentId: string) => void;
     onDeleteKeyMoment: (keyMomentId: string) => void;
-    showRemoveVideos?: boolean;
-    onRemoveVideo1?: () => void;
-    onRemoveVideo2?: () => void;
     // Swipe stats
     direction: 'left' | 'right' | 'none';
     speed: number;
@@ -59,7 +56,6 @@ interface ReplayComparisonSidebarProps {
     onShowAllTracks: () => void;
     onHideAllTracks: () => void;
     onToggleTrajectoryTrack: (trackName: string) => void;
-    onRemoveMetadata?: () => void;
     velocityColorPreset?: VelocityColorPreset | null;
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
@@ -102,9 +98,6 @@ export function ReplayComparisonSidebar({
     onUpdateKeyMomentFromVideo1,
     onUpdateKeyMomentFromVideo2,
     onDeleteKeyMoment,
-    showRemoveVideos,
-    onRemoveVideo1,
-    onRemoveVideo2,
     direction,
     speed,
     trajectoryHistorySeconds,
@@ -122,7 +115,6 @@ export function ReplayComparisonSidebar({
     onShowAllTracks,
     onHideAllTracks,
     onToggleTrajectoryTrack,
-    onRemoveMetadata,
     velocityColorPreset,
     cloudEnabled = false,
     cloudBootstrapped = false,
@@ -175,18 +167,11 @@ export function ReplayComparisonSidebar({
                     onPlaybackSliderActivate={onPlaybackSliderActivate}
                     onCreateKeyMomentFromVideo1={onCreateKeyMomentFromVideo1}
                     onCreateKeyMomentFromVideo2={onCreateKeyMomentFromVideo2}
-                    onJumpToKeyMoment={onJumpToKeyMoment}
                     onSelectKeyMoment={onSelectKeyMoment}
                     onDeselectKeyMoment={onDeselectKeyMoment}
                     onSetKeyMomentTime1={onSetKeyMomentTime1}
                     onSetKeyMomentTime2={onSetKeyMomentTime2}
-                    onUpdateKeyMomentFromVideo1={onUpdateKeyMomentFromVideo1}
-                    onUpdateKeyMomentFromVideo2={onUpdateKeyMomentFromVideo2}
                     onDeleteKeyMoment={onDeleteKeyMoment}
-                    showRemoveVideos={showRemoveVideos}
-                    onRemoveVideo1={onRemoveVideo1}
-                    onRemoveVideo2={onRemoveVideo2}
-                    onRemoveMetadata={onRemoveMetadata}
                 />
 
                 {/* <SwipeStatsPanel
@@ -209,7 +194,6 @@ export function ReplayComparisonSidebar({
                     onShowAllTracks={onShowAllTracks}
                     onHideAllTracks={onHideAllTracks}
                     onToggleTrajectoryTrack={onToggleTrajectoryTrack}
-                    onRemoveMetadata={onRemoveMetadata}
                     velocityColorPreset={velocityColorPreset}
                 />}
             </div>
