@@ -1,0 +1,37 @@
+.annotationLayer {
+    position: absolute;
+    z-index: 25;
+    overflow: hidden;
+    border-radius: 0.25rem;
+}
+
+.annotationLayer :global(.tldraw__editor),
+.annotationLayer :global(.tl-container),
+.annotationLayer :global(.tl-canvas) {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.annotationLayerInteractive {
+    pointer-events: auto;
+}
+
+.annotationLayerPassive {
+    pointer-events: none;
+}
+
+.annotationLayer :global(.tl-container) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-background) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-canvas) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-watermark_SEE-LICENSE) {
+    display: none !important;
+}

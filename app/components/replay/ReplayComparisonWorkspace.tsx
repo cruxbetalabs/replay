@@ -15,11 +15,13 @@ import { useMouseControl } from '../../hooks/useMouseControl';
 import { useOverlaySettings } from '../../hooks/useOverlaySettings';
 import { useVideoControl } from '../../hooks/useVideoControl';
 import { useVideoFps } from '../../hooks/useVideoFps';
+import { useVideoAnnotations } from '../../hooks/useVideoAnnotations';
 import type { KeyMoment } from '../../lib/key-moments';
 import type { TrajectoryMetadata, VelocityColorPreset } from '../../lib/trajectory-types';
 import type { PresetComparison, PresetLoadTarget } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
 import type { ActiveCloudUpload, CloudJobSummary } from '../../lib/replay-cloud/types';
+import type { VideoAnnotationBundle } from '../../lib/video-annotations';
 import { EMPTY_CLOUD_JOBS } from '../../lib/empty-arrays';
 
 export interface SplitViewContentProps {
@@ -28,6 +30,8 @@ export interface SplitViewContentProps {
     visibleTrajectoryTrackNames: string[];
     showPose: boolean;
     resetIKRefs: [MutableRefObject<(() => void) | null>, MutableRefObject<(() => void) | null>];
+    annotationPersistenceKey: string | null;
+    annotationByIndex: [VideoAnnotationBundle, VideoAnnotationBundle];
 }
 
 interface ReplayComparisonWorkspaceProps {
@@ -55,6 +59,7 @@ interface ReplayComparisonWorkspaceProps {
     onLoadPreset?: (preset: PresetComparison, target: PresetLoadTarget) => void;
     presetKeyMomentsStamp?: string | null;
     presetKeyMomentsState?: { keyMoments: KeyMoment[]; selectedKeyMomentId: string | null } | null;
+    annotationStorageKey?: string | null;
     cloudEnabled?: boolean;
     cloudBootstrapped?: boolean;
     cloudConnecting?: boolean;
@@ -94,6 +99,7 @@ export function ReplayComparisonWorkspace({
     onLoadPreset,
     presetKeyMomentsStamp,
     presetKeyMomentsState,
+    annotationStorageKey = null,
     cloudEnabled = false,
     cloudBootstrapped = false,
     cloudConnecting = false,
@@ -173,6 +179,53 @@ export function ReplayComparisonWorkspace({
         presetKeyMomentsStamp,
         presetKeyMomentsState,
     });
+
+    const {
+        enabledByIndex,
+        shapeTimingsByIndex,
+        toggleEnabled,
+        setShapeTimings,
+    } = useVideoAnnotations({ persistenceKey: annotationStorageKey });
+
+    const annotationByIndex = useMemo((): [VideoAnnotationBundle, VideoAnnotationBundle] => ([
+        {
+            enabled: enabledByIndex[0],
+            onToggleEnabled: () => toggleEnabled(0),
+            currentTime: currentTime1,
+            duration: duration1,
+            fps: fps1,
+            seekAmount: seekAmount1,
+            onSeek: seekTo1,
+            shapeTimings: shapeTimingsByIndex[0],
+            onShapeTimingsChange: (shapeTimings) => setShapeTimings(0, shapeTimings),
+        },
+        {
+            enabled: enabledByIndex[1],
+            onToggleEnabled: () => toggleEnabled(1),
+            currentTime: currentTime2,
+            duration: duration2,
+            fps: fps2,
+            seekAmount: seekAmount2,
+            onSeek: seekTo2,
+            shapeTimings: shapeTimingsByIndex[1],
+            onShapeTimingsChange: (shapeTimings) => setShapeTimings(1, shapeTimings),
+        },
+    ]), [
+        currentTime1,
+        currentTime2,
+        duration1,
+        duration2,
+        enabledByIndex,
+        fps1,
+        fps2,
+        seekAmount1,
+        seekAmount2,
+        seekTo1,
+        seekTo2,
+        setShapeTimings,
+        shapeTimingsByIndex,
+        toggleEnabled,
+    ]);
 
     const {
         showTrajectory,
@@ -305,6 +358,8 @@ export function ReplayComparisonWorkspace({
                                 visibleTrajectoryTrackNames: effectiveVisibleTrackNames,
                                 showPose,
                                 resetIKRefs,
+                                annotationPersistenceKey: annotationStorageKey,
+                                annotationByIndex,
                             })}
                         </div>
                     </TabsContent>

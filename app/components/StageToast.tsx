@@ -34,10 +34,11 @@ export function StageToast({ results, onClose }: StageToastProps) {
     useEffect(() => {
         const id = setTimeout(onClose, AUTO_DISMISS_MS);
         return () => clearTimeout(id);
-    }, [onClose]);
+        // Only restart the timer when the result set changes, not when the parent re-renders.
+    }, [results, onClose]);
 
     return (
-        <div className="absolute inset-x-3 top-3 z-20 rounded-xl border border-white/10 bg-black/55 shadow-2xl backdrop-blur-xl">
+        <div className="pointer-events-auto absolute inset-x-3 top-3 z-50 rounded-xl border border-white/10 bg-black/55 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-white/40">
                     Upload results

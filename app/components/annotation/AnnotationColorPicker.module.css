@@ -1,0 +1,52 @@
+.popover {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 50;
+    width: 9.5rem;
+    border-radius: 0.625rem;
+    border: 1px solid rgb(255 255 255 / 12%);
+    background: rgb(255 255 255 / 96%);
+    padding: 0.625rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+    backdrop-filter: blur(8px);
+}
+
+.swatchInner[data-light='true'] {
+    border-color: rgb(0 0 0 / 22%);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.375rem;
+}
+
+.swatch {
+    display: flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 120ms ease;
+}
+
+.swatch:hover {
+    transform: scale(1.08);
+}
+
+.swatch[data-selected='true'] {
+    outline: 2px solid rgb(0 0 0 / 18%);
+    outline-offset: 2px;
+}
+
+.swatchInner {
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(0 0 0 / 8%);
+}
