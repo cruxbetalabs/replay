@@ -184,48 +184,9 @@ export function ReplayComparisonWorkspace({
         enabledByIndex,
         shapeTimingsByIndex,
         toggleEnabled,
+        toggleAnnotateForAll,
         setShapeTimings,
     } = useVideoAnnotations({ persistenceKey: annotationStorageKey });
-
-    const annotationByIndex = useMemo((): [VideoAnnotationBundle, VideoAnnotationBundle] => ([
-        {
-            enabled: enabledByIndex[0],
-            onToggleEnabled: () => toggleEnabled(0),
-            currentTime: currentTime1,
-            duration: duration1,
-            fps: fps1,
-            seekAmount: seekAmount1,
-            onSeek: seekTo1,
-            shapeTimings: shapeTimingsByIndex[0],
-            onShapeTimingsChange: (shapeTimings) => setShapeTimings(0, shapeTimings),
-        },
-        {
-            enabled: enabledByIndex[1],
-            onToggleEnabled: () => toggleEnabled(1),
-            currentTime: currentTime2,
-            duration: duration2,
-            fps: fps2,
-            seekAmount: seekAmount2,
-            onSeek: seekTo2,
-            shapeTimings: shapeTimingsByIndex[1],
-            onShapeTimingsChange: (shapeTimings) => setShapeTimings(1, shapeTimings),
-        },
-    ]), [
-        currentTime1,
-        currentTime2,
-        duration1,
-        duration2,
-        enabledByIndex,
-        fps1,
-        fps2,
-        seekAmount1,
-        seekAmount2,
-        seekTo1,
-        seekTo2,
-        setShapeTimings,
-        shapeTimingsByIndex,
-        toggleEnabled,
-    ]);
 
     const {
         showTrajectory,
@@ -240,7 +201,64 @@ export function ReplayComparisonWorkspace({
         hideAllTrajectoryTracks,
         toggleTrajectory,
         togglePose,
+        hideAnalysisOverlays,
     } = useOverlaySettings({ availableTrajectoryTrackNames });
+
+    const handleToggleAnnotate = useCallback((videoIndex: VideoIndex) => {
+        if (!enabledByIndex[videoIndex]) {
+            hideAnalysisOverlays();
+        }
+        toggleEnabled(videoIndex);
+    }, [enabledByIndex, hideAnalysisOverlays, toggleEnabled]);
+
+    const handleToggleAnnotateForAll = useCallback(() => {
+        const anyEnabled = enabledByIndex[0] || enabledByIndex[1];
+        if (!anyEnabled) {
+            hideAnalysisOverlays();
+        }
+        toggleAnnotateForAll();
+    }, [enabledByIndex, hideAnalysisOverlays, toggleAnnotateForAll]);
+
+    const annotationByIndex = useMemo((): [VideoAnnotationBundle, VideoAnnotationBundle] => ([
+        {
+            enabled: enabledByIndex[0],
+            onToggleEnabled: () => handleToggleAnnotate(0),
+            currentTime: currentTime1,
+            duration: duration1,
+            fps: overlayMetadataByIndex[0]?.sourceVideo.fps ?? fps1,
+            seekAmount: seekAmount1,
+            onSeek: seekTo1,
+            shapeTimings: shapeTimingsByIndex[0],
+            onShapeTimingsChange: (shapeTimings) => setShapeTimings(0, shapeTimings),
+        },
+        {
+            enabled: enabledByIndex[1],
+            onToggleEnabled: () => handleToggleAnnotate(1),
+            currentTime: currentTime2,
+            duration: duration2,
+            fps: overlayMetadataByIndex[1]?.sourceVideo.fps ?? fps2,
+            seekAmount: seekAmount2,
+            onSeek: seekTo2,
+            shapeTimings: shapeTimingsByIndex[1],
+            onShapeTimingsChange: (shapeTimings) => setShapeTimings(1, shapeTimings),
+        },
+    ]), [
+        currentTime1,
+        currentTime2,
+        duration1,
+        duration2,
+        enabledByIndex,
+        fps1,
+        fps2,
+        handleToggleAnnotate,
+        overlayMetadataByIndex,
+        seekAmount1,
+        seekAmount2,
+        seekTo1,
+        seekTo2,
+        setShapeTimings,
+        shapeTimingsByIndex,
+    ]);
 
     const effectiveVisibleTrackNames = showTrajectory ? visibleTrajectoryTrackNames : [];
 
@@ -250,18 +268,22 @@ export function ReplayComparisonWorkspace({
         setViewMode(nextViewMode === 'overlay' && !hasAnyOverlayData ? 'split' : nextViewMode);
     }, [hasAnyOverlayData]);
 
+    const hasVideos = Boolean(videoUrls[0] || videoUrls[1]);
+
     const { shortcuts, enabled: areShortcutsEnabled } = useComparisonShortcuts({
         addKeyShortcut,
         keyMomentShortcuts,
         availableTrajectoryTrackNames,
         hasAnyOverlayData,
         hasPoseMetadata,
+        hasVideos,
         resolvedViewMode,
         onSetViewMode: handleSetViewMode,
         onTogglePose: togglePose,
         onToggleTrajectory: toggleTrajectory,
         onToggleTrajectoryTrack: toggleTrajectoryTrack,
         onResetPose: handleResetPose,
+        onToggleAnnotateForAll: handleToggleAnnotateForAll,
     });
 
     useKeyboardShortcuts({
@@ -297,8 +319,6 @@ export function ReplayComparisonWorkspace({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [togglePose, toggleTrajectory]);
 
-    const hasVideos = Boolean(videoUrls[0] || videoUrls[1]);
-
     return (
         <div className="flex h-full w-full min-h-0 overflow-hidden bg-zinc-50 font-sans dark:bg-black">
             <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} cloudEnabled={cloudEnabled} />
@@ -325,6 +345,9 @@ export function ReplayComparisonWorkspace({
                             onRemoveMetadata2={onRemoveMetadata2}
                             onRemoveAllMetadata={onRemoveAllMetadata}
                             onOpenShortcuts={() => setShortcutsOpen(true)}
+                            annotateModeActive={enabledByIndex[0] || enabledByIndex[1]}
+                            onToggleAnnotateMode={handleToggleAnnotateForAll}
+                            showAnnotationMenu={hasVideos}
                             presets={presets}
                             onLoadPreset={onLoadPreset}
                             cloudEnabled={cloudEnabled}

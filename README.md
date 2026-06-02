@@ -46,7 +46,7 @@ The `<video>` element is the single source of truth for current playback positio
 
 ### How it works
 
-**React state (`currentTime1 / currentTime2` in `useVideoControl`)** is UI-only. It is updated immediately on slider drag so the scrubber stays responsive, but the overlay never reads these values. The actual `video.currentTime` assignment is rAF-throttled so the browser decoder queue doesn't flood during fast scrubbing.
+**React state (`currentTime1 / currentTime2` in `useVideoControl`)** is UI-only. It is updated immediately on slider drag so the scrubber stays responsive, but the overlay never reads these values. Actual seeks are rAF-coalesced, chained on `seeked` when the decoder is busy, and use `fastSeek()` when the browser supports it so the decoder queue does not grow during fast scrubbing.
 
 **`TrajectoryOverlay` is event-driven, not prop-driven.** It attaches listeners directly to the `<video>` DOM element and draws into a `<canvas>` positioned on top of the video:
 
@@ -54,8 +54,7 @@ The `<video>` element is the single source of truth for current playback positio
 |-------|-----------------|
 | `play` | Start render loop (rVFC or rAF) |
 | `pause` | Stop loop, draw one final frame |
-| `seeking` | `renderFrame()` immediately — `currentTime` is already updated on the element before decode finishes, so the trajectory responds instantly during scrubbing |
-| `seeked` | `renderOnce()` — authoritative redraw once the decoded pixel frame is ready |
+| `seeked` | `renderOnce()` — redraw once the decoded pixel frame is ready (keeps overlay aligned with video during scrubbing) |
 | `ResizeObserver` | `renderOnce()` on container resize or DPR change |
 
 **Render loop strategy:**

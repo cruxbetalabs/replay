@@ -8,9 +8,11 @@ import { AnnotationToolbar } from './AnnotationToolbar';
 
 interface AnnotationToolbarPortalProps {
     containerRef: RefObject<HTMLDivElement | null>;
+    stageWidth: number;
+    stageHeight: number;
 }
 
-export function AnnotationToolbarPortal({ containerRef }: AnnotationToolbarPortalProps) {
+export function AnnotationToolbarPortal({ containerRef, stageWidth, stageHeight }: AnnotationToolbarPortalProps) {
     const editor = useEditor();
     const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
@@ -22,5 +24,8 @@ export function AnnotationToolbarPortal({ containerRef }: AnnotationToolbarPorta
         return null;
     }
 
-    return createPortal(<AnnotationToolbar />, container);
+    return createPortal(
+        <AnnotationToolbar stageWidth={stageWidth} stageHeight={stageHeight} />,
+        container,
+    );
 }

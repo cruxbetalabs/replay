@@ -8,6 +8,7 @@ import {
     useEditor,
     type TLDefaultColorStyle,
 } from 'tldraw';
+import { applyAnnotationColorToEditor } from '../../lib/annotation-shape-styles';
 import styles from './AnnotationColorPicker.module.css';
 
 /** Two rows × four columns — tldraw style keys. */
@@ -41,12 +42,7 @@ function getActiveColor(editor: ReturnType<typeof useEditor>): TLDefaultColorSty
 }
 
 function applyColor(editor: ReturnType<typeof useEditor>, color: TLDefaultColorStyle) {
-    editor.run(() => {
-        editor.setStyleForNextShapes(DefaultColorStyle, color);
-        if (editor.getSelectedShapeIds().length > 0) {
-            editor.setStyleForSelectedShapes(DefaultColorStyle, color);
-        }
-    });
+    applyAnnotationColorToEditor(editor, color);
 }
 
 export const AnnotationColorPicker = track(function AnnotationColorPicker() {
@@ -55,8 +51,8 @@ export const AnnotationColorPicker = track(function AnnotationColorPicker() {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const activeColor = getActiveColor(editor);
-    const themeColors = editor.getCurrentTheme().colors[editor.getColorMode()];
-    const activeHex = getColorValue(themeColors, activeColor, 'solid');
+    const swatchThemeColors = editor.getCurrentTheme().colors.light;
+    const activeHex = getColorValue(swatchThemeColors, activeColor, 'solid');
 
     useEffect(() => {
         if (!isOpen) {
@@ -94,7 +90,7 @@ export const AnnotationColorPicker = track(function AnnotationColorPicker() {
                 <div className={styles.popover} role="listbox" aria-label="Drawing colors">
                     <div className={styles.grid}>
                         {ANNOTATION_COLORS.map((color) => {
-                            const hex = getColorValue(themeColors, color, 'solid');
+                            const hex = getColorValue(swatchThemeColors, color, 'solid');
                             const isSelected = color === activeColor;
                             const isLightSwatch = LIGHT_SWATCH_COLORS.has(color);
 

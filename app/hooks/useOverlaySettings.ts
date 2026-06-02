@@ -48,6 +48,12 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         setShowPose((prev) => !prev);
     }, []);
 
+    /** Turns off pose and trajectory overlays (e.g. when entering annotate mode). */
+    const hideAnalysisOverlays = useCallback(() => {
+        setShowPose(false);
+        setShowTrajectory(false);
+    }, []);
+
     return {
         showTrajectory,
         showPose,
@@ -61,5 +67,6 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         hideAllTrajectoryTracks,
         toggleTrajectory,
         togglePose,
+        hideAnalysisOverlays,
     };
 }

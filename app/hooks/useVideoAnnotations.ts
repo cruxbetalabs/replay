@@ -36,6 +36,17 @@ export function useVideoAnnotations({ persistenceKey = null }: UseVideoAnnotatio
         });
     }, []);
 
+    const toggleAnnotateForAll = useCallback(() => {
+        setEditorState((prev) => {
+            const anyEnabled = prev.enabledByIndex[0] || prev.enabledByIndex[1];
+            const nextEnabled = !anyEnabled;
+            return {
+                ...prev,
+                enabledByIndex: [nextEnabled, nextEnabled],
+            };
+        });
+    }, []);
+
     const setShapeTimings = useCallback((videoIndex: VideoIndex, shapeTimings: Record<string, AnnotationTiming>) => {
         setEditorState((prev) => {
             const nextShapeTimingsByIndex: [
@@ -99,6 +110,7 @@ export function useVideoAnnotations({ persistenceKey = null }: UseVideoAnnotatio
         enabledByIndex: editorState.enabledByIndex,
         shapeTimingsByIndex: editorState.shapeTimingsByIndex,
         toggleEnabled,
+        toggleAnnotateForAll,
         setShapeTimings,
         upsertShapeTiming,
         updateShapeTiming,

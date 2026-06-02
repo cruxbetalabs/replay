@@ -15,6 +15,7 @@ interface AnnotationPlaybackSliderProps {
     rangeEnd?: number;
     onSeek: (time: number) => void;
     onRangeChange?: (startTime: number, endTime: number) => void;
+    onRangeHandleDrag?: (isDragging: boolean) => void;
 }
 
 const getPercent = (time: number, duration: number) => {
@@ -37,6 +38,7 @@ export function AnnotationPlaybackSlider({
     rangeEnd = 0,
     onSeek,
     onRangeChange,
+    onRangeHandleDrag,
 }: AnnotationPlaybackSliderProps) {
     const playbackTrackClassName = [
         styles.playbackSliderTrack,
@@ -72,17 +74,23 @@ export function AnnotationPlaybackSlider({
 
             if (handle === 'start') {
                 onRangeChange(nextTime, rangeEnd);
+                onSeek(nextTime);
                 return;
             }
 
             onRangeChange(rangeStart, nextTime);
+            onSeek(nextTime);
         };
+
+        onRangeHandleDrag?.(true);
+        updateFromClientX(event.clientX);
 
         const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
             updateFromClientX(moveEvent.clientX);
         };
 
         const handlePointerUp = () => {
+            onRangeHandleDrag?.(false);
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };

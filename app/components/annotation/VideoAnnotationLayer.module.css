@@ -35,3 +35,18 @@
 .annotationLayer :global(.tl-watermark_SEE-LICENSE) {
     display: none !important;
 }
+
+/* Annotate toggle: same dark track on/off; thumb position shows state. */
+.annotateSwitch[data-state="checked"],
+.annotateSwitch[data-state="unchecked"] {
+    background-color: rgb(255 255 255 / 0.3) !important;
+    border-color: rgb(255 255 255 / 0.12);
+}
+
+.annotateSwitch[data-state="checked"] :global([data-slot="switch-thumb"]) {
+    background-color: rgb(255 255 255 / 0.95);
+}
+
+.annotateSwitch[data-state="unchecked"] :global([data-slot="switch-thumb"]) {
+    background-color: rgb(255 255 255 / 0.55);
+}

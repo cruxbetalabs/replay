@@ -9,6 +9,7 @@ import {
     Type,
 } from 'lucide-react';
 import { track, useEditor } from 'tldraw';
+import { applyAnnotationDefaultStylesForTool } from '../../lib/annotation-shape-styles';
 import { AnnotationColorPicker } from './AnnotationColorPicker';
 
 const TOOL_BUTTON_CLASS = [
@@ -26,20 +27,31 @@ const CLEAR_BUTTON_CLASS = [
     'disabled:cursor-not-allowed disabled:opacity-40',
 ].join(' ');
 
-export const AnnotationToolbar = track(function AnnotationToolbar() {
+export const AnnotationToolbar = track(function AnnotationToolbar({
+    stageWidth,
+    stageHeight,
+}: {
+    stageWidth: number;
+    stageHeight: number;
+}) {
     const editor = useEditor();
     const currentToolId = editor.getCurrentToolId();
     const shapeIds = editor.getCurrentPageShapeIds();
-    const hasAnnotations = shapeIds.length > 0;
+    const hasAnnotations = shapeIds.size > 0;
+
+    const selectTool = (toolId: 'select' | 'draw' | 'eraser' | 'text' | 'arrow') => {
+        editor.setCurrentTool(toolId);
+        applyAnnotationDefaultStylesForTool(editor, toolId, stageWidth, stageHeight);
+    };
 
     const handleClearAllAnnotations = () => {
         const ids = editor.getCurrentPageShapeIds();
-        if (ids.length === 0) {
+        if (ids.size === 0) {
             return;
         }
 
         editor.selectNone();
-        editor.deleteShapes(ids);
+        editor.deleteShapes([...ids]);
     };
 
     return (
@@ -58,7 +70,7 @@ export const AnnotationToolbar = track(function AnnotationToolbar() {
                 className={TOOL_BUTTON_CLASS}
                 data-active={currentToolId === 'select'}
                 aria-label="Select"
-                onClick={() => editor.setCurrentTool('select')}
+                onClick={() => selectTool('select')}
             >
                 <MousePointer2 className="size-4" />
             </button>
@@ -67,7 +79,7 @@ export const AnnotationToolbar = track(function AnnotationToolbar() {
                 className={TOOL_BUTTON_CLASS}
                 data-active={currentToolId === 'draw'}
                 aria-label="Free draw"
-                onClick={() => editor.setCurrentTool('draw')}
+                onClick={() => selectTool('draw')}
             >
                 <Pencil className="size-4" />
             </button>
@@ -77,7 +89,7 @@ export const AnnotationToolbar = track(function AnnotationToolbar() {
                 className={TOOL_BUTTON_CLASS}
                 data-active={currentToolId === 'eraser'}
                 aria-label="Eraser"
-                onClick={() => editor.setCurrentTool('eraser')}
+                onClick={() => selectTool('eraser')}
             >
                 <Eraser className="size-4" />
             </button>
@@ -86,7 +98,7 @@ export const AnnotationToolbar = track(function AnnotationToolbar() {
                 className={TOOL_BUTTON_CLASS}
                 data-active={currentToolId === 'text'}
                 aria-label="Text"
-                onClick={() => editor.setCurrentTool('text')}
+                onClick={() => selectTool('text')}
             >
                 <Type className="size-4" />
             </button>
@@ -95,7 +107,7 @@ export const AnnotationToolbar = track(function AnnotationToolbar() {
                 className={TOOL_BUTTON_CLASS}
                 data-active={currentToolId === 'arrow'}
                 aria-label="Arrow"
-                onClick={() => editor.setCurrentTool('arrow')}
+                onClick={() => selectTool('arrow')}
             >
                 <ArrowUpRight className="size-4" />
             </button>

@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { RefObject } from 'react';
+import type { MutableRefObject, RefObject } from 'react';
 import { AnnotationToolbarPortal } from './AnnotationToolbarPortal';
 import {
     DefaultColorStyle,
     DefaultSizeStyle,
+    TextShapeUtil,
     type Editor,
     type TLComponents,
     type TLShape,
@@ -16,12 +17,20 @@ import {
 import 'tldraw/tldraw.css';
 import { Switch } from '@/components/ui/switch';
 import { getContainedRect } from '../../lib/pose-ik';
+import { isShapeRecordId, DEFAULT_ANNOTATION_COLOR, repairAnnotationShapeStyles } from '../../lib/annotation-shape-styles';
 import {
     buildDefaultAnnotationTiming,
     clampAnnotationTiming,
-    getAnnotationSizeForVideoDimensions,
+    getAnnotationSizeForStageDimensions,
     getTldrawPersistenceKey,
-    isAnnotationVisibleAtTime,
+    hasPlaybackTimeAdvanced,
+    getReplayTimingFromMeta,
+    normalizeShapeTimingsForDuration,
+    REPLAY_TIMING_META_KEY,
+    replayTimingMetaNeedsSync,
+    resolveAnnotationShapeVisible,
+    resolveShapeTiming,
+    snapTimeToFrame,
     type AnnotationTiming,
 } from '../../lib/video-annotations';
 import type { VideoIndex } from '../../lib/key-moments';
@@ -69,12 +78,17 @@ const ANNOTATION_COMPONENTS: TLComponents = {
     TopPanel: null,
 };
 
-const ACCENT_COLORS = ['blue', 'green'] as const;
+const ANNOTATION_SHAPE_UTILS = [
+    TextShapeUtil.configure({
+        showTextOutline: true,
+    }),
+];
 
+/** Locks tldraw page bounds to the on-screen video stage (CSS px), not source video pixels. */
 function syncAnnotationViewport(
     editor: Editor,
-    videoWidth: number,
-    videoHeight: number,
+    stageWidth: number,
+    stageHeight: number,
 ) {
     editor.updateInstanceState({ isGridMode: false });
 
@@ -84,7 +98,7 @@ function syncAnnotationViewport(
         panSpeed: 0,
         zoomSpeed: 0,
         constraints: {
-            bounds: { x: 0, y: 0, w: videoWidth, h: videoHeight },
+            bounds: { x: 0, y: 0, w: stageWidth, h: stageHeight },
             padding: { x: 0, y: 0 },
             origin: { x: 0.5, y: 0.5 },
             initialZoom: 'fit-min',
@@ -94,22 +108,51 @@ function syncAnnotationViewport(
     });
 
     editor.zoomToBounds(
-        { x: 0, y: 0, w: videoWidth, h: videoHeight },
+        { x: 0, y: 0, w: stageWidth, h: stageHeight },
         { inset: 0, immediate: true, force: true },
     );
 }
 
-function syncAnnotationStyles(
+function configureAnnotationEditor(
     editor: Editor,
-    videoWidth: number,
-    videoHeight: number,
-    accentColor: (typeof ACCENT_COLORS)[number],
+    stageWidth: number,
+    stageHeight: number,
 ) {
-    editor.setStyleForNextShapes(DefaultColorStyle, accentColor);
-    editor.setStyleForNextShapes(
-        DefaultSizeStyle,
-        getAnnotationSizeForVideoDimensions(videoWidth, videoHeight),
-    );
+    editor.user.updateUserPreferences({
+        isDynamicSizeMode: false,
+        colorScheme: 'light',
+    });
+
+    const size = getAnnotationSizeForStageDimensions(stageWidth, stageHeight);
+    editor.setStyleForNextShapes(DefaultColorStyle, DEFAULT_ANNOTATION_COLOR);
+    editor.setStyleForNextShapes(DefaultSizeStyle, size);
+    editor.setStyleForSelectedShapes(DefaultColorStyle, DEFAULT_ANNOTATION_COLOR);
+    editor.setStyleForSelectedShapes(DefaultSizeStyle, size);
+
+    if (stageWidth > 0 && stageHeight > 0) {
+        repairAnnotationShapeStyles(editor, stageWidth, stageHeight);
+    }
+}
+
+function getPlaybackContext(
+    videoRef: RefObject<HTMLVideoElement | null>,
+    currentTimeRef: MutableRefObject<number>,
+    durationRef: MutableRefObject<number>,
+) {
+    const video = videoRef.current;
+    if (video && video.readyState >= 1) {
+        return {
+            currentTime: Number.isFinite(video.currentTime) ? video.currentTime : currentTimeRef.current,
+            duration: Number.isFinite(video.duration) && video.duration > 0
+                ? video.duration
+                : durationRef.current,
+        };
+    }
+
+    return {
+        currentTime: currentTimeRef.current,
+        duration: durationRef.current,
+    };
 }
 
 function AnnotationSelectionSync({
@@ -149,14 +192,24 @@ export function VideoAnnotationLayer({
 }: VideoAnnotationLayerProps) {
     const editorRef = useRef<Editor | null>(null);
     const toolbarSlotRef = useRef<HTMLDivElement>(null);
-    const videoDimensionsRef = useRef({ width: 0, height: 0 });
+    /** tldraw page size = displayed video stage (CSS px), not source file resolution. */
+    const stageCanvasRef = useRef({ width: 0, height: 0 });
     const shapeTimingsRef = useRef(shapeTimings);
     const currentTimeRef = useRef(currentTime);
     const durationRef = useRef(duration);
     const fpsRef = useRef(fps);
     const enabledRef = useRef(enabled);
+    const lastPlaybackTimeForSelectionRef = useRef<number | null>(null);
+    const isRangeHandleDraggingRef = useRef(false);
     const [drawRect, setDrawRect] = useState<DrawRect>({ x: 0, y: 0, width: 0, height: 0 });
+    const [videoSourceReady, setVideoSourceReady] = useState(false);
     const [isEditorReady, setIsEditorReady] = useState(false);
+    const hasRepairedTimingsRef = useRef(false);
+
+    useEffect(() => {
+        hasRepairedTimingsRef.current = false;
+        setVideoSourceReady(false);
+    }, [persistenceKey, videoIndex]);
     const [selectedShapeIds, setSelectedShapeIds] = useState<TLShapeId[]>([]);
 
     shapeTimingsRef.current = shapeTimings;
@@ -166,7 +219,6 @@ export function VideoAnnotationLayer({
     enabledRef.current = enabled;
 
     const tldrawPersistenceKey = getTldrawPersistenceKey(persistenceKey, videoIndex);
-    const accentColor = ACCENT_COLORS[videoIndex];
     const selectedShapeId = selectedShapeIds.length === 1 ? selectedShapeIds[0] : null;
     const selectedTiming = selectedShapeId ? shapeTimings[selectedShapeId] ?? null : null;
     const sliderMode = selectedTiming ? 'range' : 'scrub';
@@ -175,12 +227,32 @@ export function VideoAnnotationLayer({
         setSelectedShapeIds(nextSelectedShapeIds);
     }, []);
 
+    const handleRangeHandleDrag = useCallback((isDragging: boolean) => {
+        isRangeHandleDraggingRef.current = isDragging;
+    }, []);
+
     const handleRangeChange = useCallback((startTime: number, endTime: number) => {
         if (!selectedShapeId) {
             return;
         }
 
         const nextTiming = clampAnnotationTiming({ startTime, endTime }, duration, fps);
+        const editor = editorRef.current;
+        const selectedShape = editor?.getShape(selectedShapeId);
+        if (editor && selectedShape) {
+            editor.updateShapes([{
+                id: selectedShapeId,
+                type: selectedShape.type,
+                meta: {
+                    ...selectedShape.meta,
+                    [REPLAY_TIMING_META_KEY]: {
+                        startTime: nextTiming.startTime,
+                        endTime: nextTiming.endTime,
+                    },
+                },
+            }]);
+        }
+
         onShapeTimingsChange({
             ...shapeTimings,
             [selectedShapeId]: nextTiming,
@@ -207,24 +279,29 @@ export function VideoAnnotationLayer({
             sourceWidth,
             sourceHeight,
         );
-        videoDimensionsRef.current = { width: sourceWidth, height: sourceHeight };
+        if (contained.width <= 0 || contained.height <= 0) {
+            return;
+        }
+
+        stageCanvasRef.current = { width: contained.width, height: contained.height };
+        setVideoSourceReady(true);
         setDrawRect(contained);
     }, [stageRef, videoRef]);
 
     useEffect(() => {
         const editor = editorRef.current;
-        const { width, height } = videoDimensionsRef.current;
+        const { width, height } = stageCanvasRef.current;
         if (!editor || !isEditorReady || width <= 0 || height <= 0 || drawRect.width <= 0) {
             return undefined;
         }
 
         const frameId = requestAnimationFrame(() => {
             syncAnnotationViewport(editor, width, height);
-            syncAnnotationStyles(editor, width, height, accentColor);
+            configureAnnotationEditor(editor, width, height);
         });
 
         return () => cancelAnimationFrame(frameId);
-    }, [accentColor, drawRect, isEditorReady]);
+    }, [drawRect, isEditorReady]);
 
     useEffect(() => {
         updateDrawRect();
@@ -249,26 +326,126 @@ export function VideoAnnotationLayer({
         };
     }, [stageRef, videoRef, updateDrawRect]);
 
-    const syncShapeVisibility = useCallback((editor: Editor, time: number) => {
+    const clearAnnotationEditorSelection = useCallback((editor: Editor) => {
+        if (editor.getEditingShapeId()) {
+            editor.complete();
+        }
+
+        if (editor.getSelectedShapeIds().length > 0) {
+            editor.selectNone();
+        }
+
+        setSelectedShapeIds([]);
+    }, []);
+
+    const syncShapeVisibility = useCallback((editor: Editor, playbackTime: number) => {
         const shapes = editor.getCurrentPageShapes();
-        const updates: TLShape[] = [];
+        const editingShapeId = editor.getEditingShapeId();
+        const selectedIds = new Set(editor.getSelectedShapeIds());
+        const updates: Array<{ id: TLShapeId; type: TLShape['type']; opacity: number }> = [];
 
         shapes.forEach((shape) => {
-            const timing = shapeTimingsRef.current[shape.id];
-            const shouldShow = timing
-                ? isAnnotationVisibleAtTime(timing, time)
-                : enabledRef.current;
+            const timing = resolveShapeTiming(shape.id, shape.meta, shapeTimingsRef.current);
+            const shouldShow = resolveAnnotationShapeVisible({
+                globalVisible: enabledRef.current,
+                playbackTime,
+                fps: fpsRef.current,
+                timing,
+                isEditing: editingShapeId === shape.id,
+                isSelectedInEditMode: enabledRef.current && selectedIds.has(shape.id),
+            });
             const nextOpacity = shouldShow ? 1 : 0;
 
             if (shape.opacity !== nextOpacity) {
-                updates.push({ ...shape, opacity: nextOpacity });
+                updates.push({ id: shape.id, type: shape.type, opacity: nextOpacity });
             }
         });
 
-        if (updates.length > 0) {
-            editor.updateShapes(updates);
+        if (updates.length === 0) {
+            return;
         }
+
+        editor.run(() => {
+            editor.updateShapes(updates);
+        }, { history: 'ignore' });
     }, []);
+
+    const handlePlaybackTimeChange = useCallback((editor: Editor, playbackTime: number) => {
+        const lastTime = lastPlaybackTimeForSelectionRef.current;
+
+        if (hasPlaybackTimeAdvanced(lastTime, playbackTime, fpsRef.current) && !isRangeHandleDraggingRef.current) {
+            clearAnnotationEditorSelection(editor);
+        }
+
+        lastPlaybackTimeForSelectionRef.current = snapTimeToFrame(playbackTime, fpsRef.current);
+        syncShapeVisibility(editor, playbackTime);
+    }, [clearAnnotationEditorSelection, syncShapeVisibility]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        const resolvedDuration = (
+            video
+            && video.readyState >= 1
+            && Number.isFinite(video.duration)
+            && video.duration > 0
+        )
+            ? video.duration
+            : duration;
+
+        if (hasRepairedTimingsRef.current || resolvedDuration <= 0) {
+            return;
+        }
+
+        const normalized = normalizeShapeTimingsForDuration(shapeTimings, resolvedDuration, fps);
+        hasRepairedTimingsRef.current = true;
+        if (normalized !== shapeTimings) {
+            onShapeTimingsChange(normalized);
+        }
+    }, [duration, fps, onShapeTimingsChange, shapeTimings, videoRef]);
+
+    const syncEditorShapeTimingMeta = useCallback((editor: Editor) => {
+        const playback = getPlaybackContext(videoRef, currentTimeRef, durationRef);
+        const resolvedDuration = playback.duration;
+        if (resolvedDuration <= 0) {
+            return;
+        }
+
+        const metaUpdates: Array<{ id: TLShapeId; type: TLShape['type']; meta: TLShape['meta'] }> = [];
+
+        editor.getCurrentPageShapes().forEach((shape) => {
+            const fromMeta = getReplayTimingFromMeta(shape.meta);
+            const fromStore = shapeTimingsRef.current[shape.id];
+            const timing = fromStore ?? fromMeta;
+            if (!timing) {
+                return;
+            }
+
+            const clamped = clampAnnotationTiming(timing, resolvedDuration, fpsRef.current);
+            if (!replayTimingMetaNeedsSync(shape.meta, clamped)) {
+                return;
+            }
+
+            metaUpdates.push({
+                id: shape.id,
+                type: shape.type,
+                meta: {
+                    ...shape.meta,
+                    [REPLAY_TIMING_META_KEY]: {
+                        startTime: clamped.startTime,
+                        endTime: clamped.endTime,
+                    },
+                },
+            });
+        });
+
+        if (metaUpdates.length === 0) {
+            return;
+        }
+
+        editor.run(() => {
+            editor.updateShapes(metaUpdates);
+        }, { history: 'ignore' });
+    }, [videoRef]);
 
     useEffect(() => {
         const editor = editorRef.current;
@@ -276,15 +453,51 @@ export function VideoAnnotationLayer({
             return;
         }
 
-        syncShapeVisibility(editor, currentTime);
-    }, [currentTime, enabled, isEditorReady, shapeTimings, syncShapeVisibility]);
+        syncEditorShapeTimingMeta(editor);
+        const playback = getPlaybackContext(videoRef, currentTimeRef, durationRef);
+        syncShapeVisibility(editor, playback.currentTime);
+    }, [duration, fps, isEditorReady, shapeTimings, syncEditorShapeTimingMeta, syncShapeVisibility, videoRef]);
+
+    useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor || !isEditorReady) {
+            return undefined;
+        }
+
+        const resolvePlaybackTime = () => {
+            const video = videoRef.current;
+            if (video && video.readyState >= 1 && Number.isFinite(video.currentTime)) {
+                return video.currentTime;
+            }
+            return currentTimeRef.current;
+        };
+
+        const syncPlayback = () => {
+            handlePlaybackTimeChange(editor, resolvePlaybackTime());
+        };
+
+        syncPlayback();
+
+        const video = videoRef.current;
+        if (!video) {
+            return undefined;
+        }
+
+        video.addEventListener('timeupdate', syncPlayback);
+        video.addEventListener('seeked', syncPlayback);
+
+        return () => {
+            video.removeEventListener('timeupdate', syncPlayback);
+            video.removeEventListener('seeked', syncPlayback);
+        };
+    }, [currentTime, enabled, isEditorReady, shapeTimings, handlePlaybackTimeChange, videoRef]);
 
     const handleMount = useCallback((editor: Editor) => {
         editorRef.current = editor;
         setIsEditorReady(true);
 
-        const { width, height } = videoDimensionsRef.current;
-        syncAnnotationStyles(editor, width, height, accentColor);
+        const { width, height } = stageCanvasRef.current;
+        configureAnnotationEditor(editor, width, height);
         editor.updateInstanceState({ isReadonly: !enabledRef.current });
         editor.setCurrentTool('draw');
 
@@ -293,18 +506,58 @@ export function VideoAnnotationLayer({
             const nextTimings = { ...shapeTimingsRef.current };
             let changed = false;
 
+            const { width: stageW, height: stageH } = stageCanvasRef.current;
+            if (stageW > 0 && stageH > 0) {
+                repairAnnotationShapeStyles(editor, stageW, stageH);
+            }
+
+            const playback = getPlaybackContext(videoRef, currentTimeRef, durationRef);
+            const metaUpdates: Array<{ id: TLShapeId; type: TLShape['type']; meta: TLShape['meta'] }> = [];
+
             shapes.forEach((shape) => {
-                if (nextTimings[shape.id]) {
-                    return;
+                let timing = nextTimings[shape.id] ?? getReplayTimingFromMeta(shape.meta);
+
+                if (!timing) {
+                    timing = buildDefaultAnnotationTiming(
+                        playback.currentTime,
+                        playback.duration,
+                        fpsRef.current,
+                    );
+                    changed = true;
+                } else if (playback.duration > 0) {
+                    const clamped = clampAnnotationTiming(timing, playback.duration, fpsRef.current);
+                    if (
+                        clamped.startTime !== timing.startTime
+                        || clamped.endTime !== timing.endTime
+                    ) {
+                        timing = clamped;
+                        changed = true;
+                    }
                 }
 
-                nextTimings[shape.id] = buildDefaultAnnotationTiming(
-                    currentTimeRef.current,
-                    durationRef.current,
-                    fpsRef.current,
-                );
-                changed = true;
+                if (nextTimings[shape.id] !== timing) {
+                    nextTimings[shape.id] = timing;
+                    changed = true;
+                }
+
+                if (replayTimingMetaNeedsSync(shape.meta, timing)) {
+                    metaUpdates.push({
+                        id: shape.id,
+                        type: shape.type,
+                        meta: {
+                            ...shape.meta,
+                            [REPLAY_TIMING_META_KEY]: {
+                                startTime: timing.startTime,
+                                endTime: timing.endTime,
+                            },
+                        },
+                    });
+                }
             });
+
+            if (metaUpdates.length > 0) {
+                editor.updateShapes(metaUpdates);
+            }
 
             if (changed) {
                 onShapeTimingsChange(nextTimings);
@@ -328,13 +581,27 @@ export function VideoAnnotationLayer({
             }
         };
 
-        const cleanupListener = editor.store.listen(() => {
+        const cleanupListener = editor.store.listen(({ changes }) => {
             assignTimingToNewShapes();
             removeDeletedShapeTimings();
-            syncShapeVisibility(editor, currentTimeRef.current);
-        }, { scope: 'document' });
+
+            const shapeRecordsTouched = [
+                ...Object.keys(changes.added),
+                ...Object.keys(changes.updated),
+                ...Object.keys(changes.removed),
+            ].some(isShapeRecordId);
+
+            if (shapeRecordsTouched) {
+                const video = videoRef.current;
+                const playbackTime = video && video.readyState >= 1
+                    ? video.currentTime
+                    : currentTimeRef.current;
+                syncShapeVisibility(editor, playbackTime);
+            }
+        }, { scope: 'document', source: 'user' });
 
         assignTimingToNewShapes();
+        syncEditorShapeTimingMeta(editor);
         syncShapeVisibility(editor, currentTimeRef.current);
 
         if (width > 0 && height > 0) {
@@ -347,7 +614,7 @@ export function VideoAnnotationLayer({
             setIsEditorReady(false);
             setSelectedShapeIds([]);
         };
-    }, [accentColor, onShapeTimingsChange, syncShapeVisibility]);
+    }, [onShapeTimingsChange, syncEditorShapeTimingMeta, syncShapeVisibility]);
 
     useEffect(() => {
         const editor = editorRef.current;
@@ -356,7 +623,22 @@ export function VideoAnnotationLayer({
         }
 
         editor.updateInstanceState({ isReadonly: !enabled });
-    }, [enabled]);
+
+        if (isEditorReady && enabled) {
+            const playback = getPlaybackContext(videoRef, currentTimeRef, durationRef);
+            syncShapeVisibility(editor, playback.currentTime);
+        }
+    }, [enabled, isEditorReady, syncShapeVisibility, videoRef]);
+
+    useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor || !isEditorReady) {
+            return;
+        }
+
+        const playback = getPlaybackContext(videoRef, currentTimeRef, durationRef);
+        syncShapeVisibility(editor, playback.currentTime);
+    }, [isEditorReady, selectedShapeIds, syncShapeVisibility, videoRef]);
 
     const layerStyle = useMemo(() => ({
         left: drawRect.x,
@@ -365,7 +647,12 @@ export function VideoAnnotationLayer({
         height: drawRect.height,
     }), [drawRect]);
 
-    const shouldMountEditor = drawRect.width > 0 && drawRect.height > 0;
+    const shouldMountEditor = drawRect.width > 0 && drawRect.height > 0 && videoSourceReady;
+
+    const editorMountKey = useMemo(
+        () => `${tldrawPersistenceKey ?? 'ephemeral'}:${Math.round(drawRect.width)}x${Math.round(drawRect.height)}`,
+        [drawRect.height, drawRect.width, tldrawPersistenceKey],
+    );
 
     return (
         <>
@@ -375,14 +662,20 @@ export function VideoAnnotationLayer({
                     style={layerStyle}
                 >
                     <Tldraw
+                        key={editorMountKey}
                         persistenceKey={tldrawPersistenceKey ?? undefined}
                         hideUi
+                        shapeUtils={ANNOTATION_SHAPE_UTILS}
                         components={ANNOTATION_COMPONENTS}
                         onMount={handleMount}
                     >
                         <AnnotationSelectionSync onSelectionChange={handleSelectionChange} />
                         {enabled && (
-                            <AnnotationToolbarPortal containerRef={toolbarSlotRef} />
+                            <AnnotationToolbarPortal
+                                containerRef={toolbarSlotRef}
+                                stageWidth={drawRect.width}
+                                stageHeight={drawRect.height}
+                            />
                         )}
                     </Tldraw>
                 </div>
@@ -391,11 +684,12 @@ export function VideoAnnotationLayer({
             <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-start justify-end gap-2">
                 <div ref={toolbarSlotRef} className="pointer-events-auto empty:hidden" />
                 <label className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
-                    <span className="text-xs font-medium text-white/70">Annotate</span>
+                    <span className="text-xs font-medium text-white/70">Annotate {enabled ? 'On' : 'is Off'}</span>
                     <Switch
                         checked={enabled}
                         onCheckedChange={onToggleEnabled}
-                        aria-label={`Toggle annotation layer for video ${videoIndex + 1}`}
+                        className={styles.annotateSwitch}
+                        aria-label={`Toggle annotation tools for video ${videoIndex + 1}`}
                     />
                 </label>
             </div>
@@ -412,6 +706,7 @@ export function VideoAnnotationLayer({
                         rangeEnd={selectedTiming?.endTime ?? Math.min(currentTime + 1, duration)}
                         onSeek={onSeek}
                         onRangeChange={selectedTiming ? handleRangeChange : undefined}
+                        onRangeHandleDrag={selectedTiming ? handleRangeHandleDrag : undefined}
                     />
                 </div>
             )}
