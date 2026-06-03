@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefObject, MutableRefObject } from 'react';
 import { TrajectoryOverlay } from './TrajectoryOverlay';
 import type { TrajectoryMetadata } from '../lib/trajectory-types';
@@ -47,7 +47,19 @@ export function OverlayComparisonStage({
     resetIKRef,
 }: OverlayComparisonStageProps) {
     const stageRef = useRef<HTMLDivElement>(null);
+    const [poseVisibleByIndex, setPoseVisibleByIndex] = useState<[boolean, boolean]>([true, true]);
     const hasRenderableOverlay = (metadata1 && canRender1) || (metadata2 && canRender2);
+
+    const showPose1 = showPose && poseVisibleByIndex[0];
+    const showPose2 = showPose && poseVisibleByIndex[1];
+
+    const togglePoseVisible = (index: 0 | 1) => {
+        setPoseVisibleByIndex((prev) => {
+            const next: [boolean, boolean] = [...prev];
+            next[index] = !next[index];
+            return next;
+        });
+    };
 
     const {
         overrides,
@@ -60,8 +72,8 @@ export function OverlayComparisonStage({
         resetIK,
     } = useIKDrag(
         [
-            { metadata: metadata1, videoRef: videoRef1, canRender: canRender1 },
-            { metadata: metadata2, videoRef: videoRef2, canRender: canRender2 },
+            { metadata: metadata1, videoRef: videoRef1, canRender: canRender1, poseVisible: showPose1 },
+            { metadata: metadata2, videoRef: videoRef2, canRender: canRender2, poseVisible: showPose2 },
         ],
         showPose,
     );
@@ -77,15 +89,24 @@ export function OverlayComparisonStage({
         <div className="relative h-full overflow-hidden rounded-lg border-4 border-gray-300 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.16),_transparent_40%),linear-gradient(180deg,_#020617_0%,_#111827_100%)] dark:border-gray-700">
             <div className="absolute inset-x-0 top-0 z-20 flex flex-wrap items-center justify-between border-b border-white/10 bg-black/35 px-5 py-4 backdrop-blur-md">
                 <div className="flex flex-wrap items-center gap-2">
-                    {SOURCE_LEGEND.map((source) => (
-                        <div
-                            key={source.label}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5"
-                        >
-                            <span className={`size-2.5 rounded-full ${source.accentClassName}`} />
-                            <span className={`text-xs font-medium ${source.textClassName}`}>{source.label}</span>
-                        </div>
-                    ))}
+                    {SOURCE_LEGEND.map((source, index) => {
+                        const isSelected = poseVisibleByIndex[index];
+                        return (
+                            <button
+                                key={source.label}
+                                type="button"
+                                aria-pressed={isSelected}
+                                aria-label={`${isSelected ? 'Hide' : 'Show'} ${source.label}`}
+                                onClick={() => togglePoseVisible(index as 0 | 1)}
+                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 transition-colors hover:bg-white/12"
+                            >
+                                <span
+                                    className={`size-2.5 rounded-full ${source.accentClassName} ${isSelected ? '' : 'opacity-25'}`}
+                                />
+                                <span className={`text-xs font-medium ${source.textClassName}`}>{source.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {showPose && hasOverrides && (
@@ -119,7 +140,7 @@ export function OverlayComparisonStage({
                         showBlackBackground={false}
                         historyWindowSec={historyWindowSec}
                         visibleTrackNames={visibleTrajectoryTrackNames}
-                        showPose={showPose}
+                        showPose={showPose1}
                         poseColor={{ r: 59, g: 130, b: 246 }}
                         landmarkOverrides={overrides[0]}
                         className="absolute inset-0"
@@ -132,7 +153,7 @@ export function OverlayComparisonStage({
                         showBlackBackground={false}
                         historyWindowSec={historyWindowSec}
                         visibleTrackNames={visibleTrajectoryTrackNames}
-                        showPose={showPose}
+                        showPose={showPose2}
                         poseColor={{ r: 16, g: 185, b: 129 }}
                         landmarkOverrides={overrides[1]}
                         className="absolute inset-0"

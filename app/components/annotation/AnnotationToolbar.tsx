@@ -5,7 +5,6 @@ import {
     Eraser,
     MousePointer2,
     Pencil,
-    Trash2,
     Type,
 } from 'lucide-react';
 import { track, useEditor } from 'tldraw';
@@ -20,13 +19,6 @@ const TOOL_BUTTON_CLASS = [
     'data-[active=true]:hover:text-black',
 ].join(' ');
 
-const CLEAR_BUTTON_CLASS = [
-    'inline-flex size-8 items-center justify-center rounded-md border border-white/15',
-    'bg-black/55 text-white/80 shadow-lg backdrop-blur-sm transition-colors',
-    'hover:bg-red-500/30 hover:text-white',
-    'disabled:cursor-not-allowed disabled:opacity-40',
-].join(' ');
-
 export const AnnotationToolbar = track(function AnnotationToolbar({
     stageWidth,
     stageHeight,
@@ -36,35 +28,14 @@ export const AnnotationToolbar = track(function AnnotationToolbar({
 }) {
     const editor = useEditor();
     const currentToolId = editor.getCurrentToolId();
-    const shapeIds = editor.getCurrentPageShapeIds();
-    const hasAnnotations = shapeIds.size > 0;
 
     const selectTool = (toolId: 'select' | 'draw' | 'eraser' | 'text' | 'arrow') => {
         editor.setCurrentTool(toolId);
         applyAnnotationDefaultStylesForTool(editor, toolId, stageWidth, stageHeight);
     };
 
-    const handleClearAllAnnotations = () => {
-        const ids = editor.getCurrentPageShapeIds();
-        if (ids.size === 0) {
-            return;
-        }
-
-        editor.selectNone();
-        editor.deleteShapes([...ids]);
-    };
-
     return (
         <div className="pointer-events-auto flex items-center gap-1.5">
-            <button
-                type="button"
-                className={CLEAR_BUTTON_CLASS}
-                aria-label="Delete all annotations"
-                disabled={!hasAnnotations}
-                onClick={handleClearAllAnnotations}
-            >
-                <Trash2 className="size-4" />
-            </button>
             <button
                 type="button"
                 className={TOOL_BUTTON_CLASS}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject, RefObject } from 'react';
 import { AnnotationToolbarPortal } from './AnnotationToolbarPortal';
+import { AnnotationDeletePortal } from './AnnotationDeletePortal';
 import {
     DefaultColorStyle,
     DefaultSizeStyle,
@@ -191,7 +192,9 @@ export function VideoAnnotationLayer({
     persistenceKey,
 }: VideoAnnotationLayerProps) {
     const editorRef = useRef<Editor | null>(null);
+    const deleteSlotRef = useRef<HTMLDivElement>(null);
     const toolbarSlotRef = useRef<HTMLDivElement>(null);
+    const confirmOverlayRef = useRef<HTMLDivElement>(null);
     /** tldraw page size = displayed video stage (CSS px), not source file resolution. */
     const stageCanvasRef = useRef({ width: 0, height: 0 });
     const shapeTimingsRef = useRef(shapeTimings);
@@ -671,27 +674,44 @@ export function VideoAnnotationLayer({
                     >
                         <AnnotationSelectionSync onSelectionChange={handleSelectionChange} />
                         {enabled && (
-                            <AnnotationToolbarPortal
-                                containerRef={toolbarSlotRef}
-                                stageWidth={drawRect.width}
-                                stageHeight={drawRect.height}
-                            />
+                            <>
+                                <AnnotationDeletePortal
+                                    containerRef={deleteSlotRef}
+                                    confirmContainerRef={confirmOverlayRef}
+                                />
+                                <AnnotationToolbarPortal
+                                    containerRef={toolbarSlotRef}
+                                    stageWidth={drawRect.width}
+                                    stageHeight={drawRect.height}
+                                />
+                            </>
                         )}
                     </Tldraw>
                 </div>
             )}
 
-            <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-start justify-end gap-2">
-                <div ref={toolbarSlotRef} className="pointer-events-auto empty:hidden" />
-                <label className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
-                    <span className="text-xs font-medium text-white/70">Annotate {enabled ? 'On' : 'is Off'}</span>
-                    <Switch
-                        checked={enabled}
-                        onCheckedChange={onToggleEnabled}
-                        className={styles.annotateSwitch}
-                        aria-label={`Toggle annotation tools for video ${videoIndex + 1}`}
-                    />
-                </label>
+            {shouldMountEditor && (
+                <div
+                    ref={confirmOverlayRef}
+                    className="pointer-events-none absolute z-50"
+                    style={layerStyle}
+                />
+            )}
+
+            <div className="pointer-events-none absolute inset-x-4 top-4 z-30 flex items-start gap-2">
+                <div ref={deleteSlotRef} className="pointer-events-auto shrink-0 empty:hidden" />
+                <div className="ml-auto flex items-center gap-2">
+                    <div ref={toolbarSlotRef} className="pointer-events-auto empty:hidden" />
+                    <label className="pointer-events-auto flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
+                        <span className="text-xs font-medium text-white/70">Annotate {enabled ? 'On' : 'is Off'}</span>
+                        <Switch
+                            checked={enabled}
+                            onCheckedChange={onToggleEnabled}
+                            className={styles.annotateSwitch}
+                            aria-label={`Toggle annotation tools for video ${videoIndex + 1}`}
+                        />
+                    </label>
+                </div>
             </div>
 
             {enabled && shouldMountEditor && (
