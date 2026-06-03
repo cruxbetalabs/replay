@@ -10,6 +10,8 @@ import { useIKDrag } from '../hooks/useIKDrag';
 import { hasCloudJobDrag, readCloudJobDragId } from '../lib/replay-cloud/drag';
 import { useCloudJobDragOptional } from './replay/CloudJobDragContext';
 import { EMPTY_STRING_ARRAY } from '../lib/empty-arrays';
+import { VideoAnnotationLayer } from './annotation/VideoAnnotationLayerClient';
+import type { VideoAnnotationBundle } from '../lib/video-annotations';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
@@ -113,6 +115,8 @@ type VideoDropzoneProps = {
     resetIKRef?: React.MutableRefObject<(() => void) | null>;
     videoIndex?: 0 | 1;
     onCloudJobDrop?: (jobId: string, videoIndex: 0 | 1) => void;
+    annotation?: VideoAnnotationBundle | null;
+    annotationPersistenceKey?: string | null;
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -137,6 +141,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             resetIKRef,
             videoIndex,
             onCloudJobDrop,
+            annotation = null,
+            annotationPersistenceKey = null,
         }: VideoDropzoneProps,
         ref,
     ) {
@@ -153,6 +159,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         const showTrajectoryBackground = hasTrajectory && !videoUrl;
 
         const [maskOpacity, setMaskOpacity] = useState(0.10);
+        const annotationEnabled = annotation?.enabled ?? false;
 
         const {
             overrides,
@@ -165,7 +172,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             resetIK,
         } = useIKDrag(
             [{ metadata: trajectoryMetadata, videoRef: resolvedVideoRef, canRender: canRenderTrajectory }],
-            showPose,
+            showPose && !annotationEnabled,
         );
 
         useEffect(() => {
@@ -184,6 +191,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
             resolve: (confirmed: boolean) => void;
         } | null>(null);
         const [toast, setToast] = useState<ProcessResult[] | null>(null);
+        const dismissToast = useCallback(() => setToast(null), []);
 
         const dragCounterRef = useRef(0);
         const cloudJobDrag = useCloudJobDragOptional();
@@ -389,7 +397,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
         );
 
         // ── Overlays rendered on top of both states ──────────────────────────
-        function renderOverlays() {
+        function renderOverlays(options?: { showToast?: boolean }) {
+            const showToast = options?.showToast ?? true;
             return (
                 <>
                     {isCloudJobDraggingOver && (
@@ -454,8 +463,8 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                         />
                     )}
 
-                    {toast && !isProcessing && !replaceConfirm && (
-                        <StageToast results={toast} onClose={() => setToast(null)} />
+                    {showToast && toast && !isProcessing && !replaceConfirm && (
+                        <StageToast results={toast} onClose={dismissToast} />
                     )}
                 </>
             );
@@ -551,11 +560,11 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                     <div
                         ref={stageRef}
                         className="relative flex h-full w-full items-center justify-center bg-black"
-                        style={{ cursor, touchAction: 'none' }}
-                        onPointerDown={onPointerDown}
-                        onPointerMove={onPointerMove}
-                        onPointerUp={onPointerUp}
-                        onPointerLeave={onPointerLeave}
+                        style={{ cursor: annotationEnabled ? 'default' : cursor, touchAction: 'none' }}
+                        onPointerDown={annotationEnabled ? undefined : onPointerDown}
+                        onPointerMove={annotationEnabled ? undefined : onPointerMove}
+                        onPointerUp={annotationEnabled ? undefined : onPointerUp}
+                        onPointerLeave={annotationEnabled ? undefined : onPointerLeave}
                     >
                         {isCalculating && (
                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90">
@@ -610,7 +619,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             }}
                         />
 
-                        {showPose && hasRenderableTrajectory && (
+                        {showPose && hasRenderableTrajectory && !annotationEnabled && (
                             <div
                                 className="pointer-events-none absolute inset-0"
                                 style={{ backgroundColor: `rgba(0,0,0,${maskOpacity})` }}
@@ -629,7 +638,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             landmarkOverrides={overrides[0]}
                         />
 
-                        {showPose && hasRenderableTrajectory && (
+                        {showPose && hasRenderableTrajectory && !annotationEnabled && (
                             <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2">
                                 <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 shadow-lg backdrop-blur-sm">
                                     <span className="whitespace-nowrap text-xs font-medium text-white/70">Overlay mask</span>
@@ -656,7 +665,29 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             </div>
                         )}
 
-                        {renderOverlays()}
+                        {renderOverlays({ showToast: false })}
+
+                        {annotation && videoIndex != null && (
+                            <VideoAnnotationLayer
+                                videoIndex={videoIndex}
+                                videoRef={resolvedVideoRef}
+                                stageRef={stageRef}
+                                enabled={annotation.enabled}
+                                onToggleEnabled={annotation.onToggleEnabled}
+                                currentTime={annotation.currentTime}
+                                duration={annotation.duration}
+                                fps={annotation.fps}
+                                seekAmount={annotation.seekAmount}
+                                onSeek={annotation.onSeek}
+                                shapeTimings={annotation.shapeTimings}
+                                onShapeTimingsChange={annotation.onShapeTimingsChange}
+                                persistenceKey={annotationPersistenceKey}
+                            />
+                        )}
+
+                        {toast && !isProcessing && !replaceConfirm && (
+                            <StageToast results={toast} onClose={dismissToast} />
+                        )}
                     </div>
                 )}
             </div>

@@ -1,0 +1,52 @@
+.annotationLayer {
+    position: absolute;
+    z-index: 25;
+    overflow: hidden;
+    border-radius: 0.25rem;
+}
+
+.annotationLayer :global(.tldraw__editor),
+.annotationLayer :global(.tl-container),
+.annotationLayer :global(.tl-canvas) {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.annotationLayerInteractive {
+    pointer-events: auto;
+}
+
+.annotationLayerPassive {
+    pointer-events: none;
+}
+
+.annotationLayer :global(.tl-container) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-background) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-canvas) {
+    background: transparent !important;
+}
+
+.annotationLayer :global(.tl-watermark_SEE-LICENSE) {
+    display: none !important;
+}
+
+/* Annotate toggle: same dark track on/off; thumb position shows state. */
+.annotateSwitch[data-state="checked"],
+.annotateSwitch[data-state="unchecked"] {
+    background-color: rgb(255 255 255 / 0.3) !important;
+    border-color: rgb(255 255 255 / 0.12);
+}
+
+.annotateSwitch[data-state="checked"] :global([data-slot="switch-thumb"]) {
+    background-color: rgb(255 255 255 / 0.95);
+}
+
+.annotateSwitch[data-state="unchecked"] :global([data-slot="switch-thumb"]) {
+    background-color: rgb(255 255 255 / 0.55);
+}

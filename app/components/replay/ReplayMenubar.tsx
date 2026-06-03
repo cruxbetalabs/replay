@@ -78,6 +78,9 @@ interface ReplayMenubarProps {
     onRemoveAllMetadata?: () => void;
     // Help
     onOpenShortcuts: () => void;
+    showAnnotationMenu?: boolean;
+    annotateModeActive?: boolean;
+    onToggleAnnotateMode?: () => void;
     // Presets
     presets?: PresetComparison[];
     onLoadPreset?: (preset: PresetComparison, target: PresetLoadTarget) => void;
@@ -109,6 +112,9 @@ export function ReplayMenubar({
     onRemoveMetadata2,
     onRemoveAllMetadata,
     onOpenShortcuts,
+    showAnnotationMenu = false,
+    annotateModeActive = false,
+    onToggleAnnotateMode,
     presets,
     onLoadPreset,
     cloudEnabled = false,
@@ -262,6 +268,19 @@ export function ReplayMenubar({
                                     </MenubarItem>
                                 </>
                             )}
+                        </MenubarContent>
+                    </MenubarMenu>
+                )}
+
+                {/* Annotation */}
+                {showAnnotationMenu && onToggleAnnotateMode && (
+                    <MenubarMenu>
+                        <MenubarTrigger>Annotation</MenubarTrigger>
+                        <MenubarContent>
+                            <MenubarItem onSelect={onToggleAnnotateMode}>
+                                {annotateModeActive ? 'Turn off annotate mode' : 'Turn on annotate mode'}
+                                <MenubarShortcut>;</MenubarShortcut>
+                            </MenubarItem>
                         </MenubarContent>
                     </MenubarMenu>
                 )}

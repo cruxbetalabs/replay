@@ -542,10 +542,8 @@ export function TrajectoryOverlay({
 
         const handlePlay = () => startLoop();
         const handlePause = () => { stopLoop(); renderOnce(); };
-        // `seeking` fires immediately when currentTime changes (before decode completes),
-        // giving the overlay instant feedback during paused scrubbing.
-        // `seeked` fires when decode finishes for the final authoritative render.
-        const handleSeeking = () => { renderFrame(); };
+        // Redraw only once the decoded video frame is ready so pose/trajectory stay
+        // aligned with the pixels shown in the <video> element during scrubbing.
         const handleSeeked = () => { renderOnce(); };
 
         const resizeObserver = new ResizeObserver(() => { renderOnce(); });
@@ -553,7 +551,6 @@ export function TrajectoryOverlay({
         if (video) {
             video.addEventListener('play', handlePlay);
             video.addEventListener('pause', handlePause);
-            video.addEventListener('seeking', handleSeeking);
             video.addEventListener('seeked', handleSeeked);
         }
 
@@ -570,7 +567,6 @@ export function TrajectoryOverlay({
             if (video) {
                 video.removeEventListener('play', handlePlay);
                 video.removeEventListener('pause', handlePause);
-                video.removeEventListener('seeking', handleSeeking);
                 video.removeEventListener('seeked', handleSeeked);
                 stopLoop();
             }

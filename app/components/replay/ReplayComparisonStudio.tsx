@@ -8,6 +8,7 @@ import { useReplayCloud } from '../../hooks/useReplayCloud';
 import { useTrajectoryState } from '../../hooks/useTrajectoryState';
 import { useVideoSources } from '../../hooks/useVideoSources';
 import { getKeyMomentStorageKey, type KeyMoment } from '../../lib/key-moments';
+import { getAnnotationStorageKey } from '../../lib/video-annotations';
 import type { KeyMomentPresetState } from '../../lib/presets';
 import { PRESET_COMPARISONS, type PresetComparison, type PresetLoadTarget } from '../../lib/presets';
 import type { VideoIndex } from '../../lib/key-moments';
@@ -59,6 +60,7 @@ export function ReplayComparisonStudio() {
     } = useReplayCloud();
 
     const keyMomentStorageKey = useMemo(() => getKeyMomentStorageKey(videoSources), [videoSources]);
+    const annotationStorageKey = useMemo(() => getAnnotationStorageKey(videoSources), [videoSources]);
 
     const handleReplaceVideo = useCallback((videoIndex: 0 | 1, file: File) => {
         clearVideoDimensions(videoIndex);
@@ -370,6 +372,8 @@ export function ReplayComparisonStudio() {
         visibleTrajectoryTrackNames,
         showPose,
         resetIKRefs,
+        annotationPersistenceKey,
+        annotationByIndex,
     }: SplitViewContentProps): ReactNode => (
         <>
             <VideoDropzone
@@ -390,6 +394,8 @@ export function ReplayComparisonStudio() {
                 onRemoveTrajectory={() => clearTrajectory(0)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(0, metadata)}
                 resetIKRef={resetIKRefs[0]}
+                annotation={annotationByIndex[0]}
+                annotationPersistenceKey={annotationPersistenceKey}
             />
             <VideoDropzone
                 label="Video 2"
@@ -409,6 +415,8 @@ export function ReplayComparisonStudio() {
                 onRemoveTrajectory={() => clearTrajectory(1)}
                 onVideoMetadataLoad={(metadata) => updateVideoDimensions(1, metadata)}
                 resetIKRef={resetIKRefs[1]}
+                annotation={annotationByIndex[1]}
+                annotationPersistenceKey={annotationPersistenceKey}
             />
         </>
     ), [
@@ -440,6 +448,7 @@ export function ReplayComparisonStudio() {
                     hasAnyOverlayData={hasAnyOverlayData}
                     hasPoseMetadata={hasPoseMetadata}
                     storageKey={keyMomentStorageKey}
+                    annotationStorageKey={annotationStorageKey}
                     showRemoveVideos
                     onRemoveVideo1={handleRemoveVideo1}
                     onRemoveVideo2={handleRemoveVideo2}

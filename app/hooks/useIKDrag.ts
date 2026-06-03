@@ -29,6 +29,8 @@ export interface IKDragSource {
     metadata: TrajectoryMetadata | null;
     videoRef: RefObject<HTMLVideoElement | null>;
     canRender: boolean;
+    /** When false, this source is skipped for hit-testing and rendering. */
+    poseVisible?: boolean;
 }
 
 type IKMeta = {
@@ -213,8 +215,8 @@ export function useIKDrag(
         ): { landmarkIndex: number; dist: number } | null => {
             const source = sourcesRef.current[sourceIndex];
             if (!source) return null;
-            const { metadata, videoRef, canRender } = source;
-            if (!metadata?.pose || !canRender) return null;
+            const { metadata, videoRef, canRender, poseVisible = true } = source;
+            if (!poseVisible || !metadata?.pose || !canRender) return null;
 
             const currentTime = videoRef.current?.currentTime ?? 0;
             const frameIdx = findLastPoseFrameAtOrBefore(metadata.pose.frames, currentTime);

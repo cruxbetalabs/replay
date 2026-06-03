@@ -63,6 +63,15 @@ export function KeyboardShortcutsDialog({ open, onOpenChange, cloudEnabled = fal
 
                     <CommandSeparator />
 
+                    <CommandGroup heading="Annotations">
+                        <CommandItem>
+                            <span className="flex-1">Toggle annotate mode (all videos)</span>
+                            <Kbd>;</Kbd>
+                        </CommandItem>
+                    </CommandGroup>
+
+                    <CommandSeparator />
+
                     <CommandGroup heading="Key Moments">
                         <CommandItem>
                             <span className="flex-1">Add key moment</span>
