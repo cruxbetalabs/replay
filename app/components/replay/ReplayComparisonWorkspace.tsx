@@ -202,14 +202,24 @@ export function ReplayComparisonWorkspace({
         toggleTrajectory,
         togglePose,
         hideAnalysisOverlays,
+        restoreAnalysisOverlays,
     } = useOverlaySettings({ availableTrajectoryTrackNames });
 
     const handleToggleAnnotate = useCallback((videoIndex: VideoIndex) => {
-        if (!enabledByIndex[videoIndex]) {
+        const isEnabled = enabledByIndex[videoIndex];
+        const otherIndex = videoIndex === 0 ? 1 : 0;
+        const otherEnabled = enabledByIndex[otherIndex];
+
+        if (!isEnabled && !otherEnabled) {
             hideAnalysisOverlays();
         }
+
         toggleEnabled(videoIndex);
-    }, [enabledByIndex, hideAnalysisOverlays, toggleEnabled]);
+
+        if (isEnabled && !otherEnabled) {
+            restoreAnalysisOverlays();
+        }
+    }, [enabledByIndex, hideAnalysisOverlays, restoreAnalysisOverlays, toggleEnabled]);
 
     const handleToggleAnnotateForAll = useCallback(() => {
         const anyEnabled = enabledByIndex[0] || enabledByIndex[1];
@@ -217,7 +227,10 @@ export function ReplayComparisonWorkspace({
             hideAnalysisOverlays();
         }
         toggleAnnotateForAll();
-    }, [enabledByIndex, hideAnalysisOverlays, toggleAnnotateForAll]);
+        if (anyEnabled) {
+            restoreAnalysisOverlays();
+        }
+    }, [enabledByIndex, hideAnalysisOverlays, restoreAnalysisOverlays, toggleAnnotateForAll]);
 
     const annotationByIndex = useMemo((): [VideoAnnotationBundle, VideoAnnotationBundle] => ([
         {

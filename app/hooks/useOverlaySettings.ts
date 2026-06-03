@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const DEFAULT_TRAJECTORY_HISTORY_SECONDS = 0.5;
 
@@ -13,6 +13,15 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
     const [showPose, setShowPose] = useState(true);
     const [trajectoryHistorySeconds, setTrajectoryHistorySeconds] = useState<number>(DEFAULT_TRAJECTORY_HISTORY_SECONDS);
     const [hiddenTrajectoryTrackNames, setHiddenTrajectoryTrackNames] = useState<string[]>([]);
+
+    const showPoseRef = useRef(showPose);
+    const showTrajectoryRef = useRef(showTrajectory);
+    const analysisOverlaySnapshotRef = useRef<{ showPose: boolean; showTrajectory: boolean } | null>(null);
+
+    useEffect(() => {
+        showPoseRef.current = showPose;
+        showTrajectoryRef.current = showTrajectory;
+    }, [showPose, showTrajectory]);
 
     useEffect(() => {
         setHiddenTrajectoryTrackNames((prev) => prev.filter((trackName) => availableTrajectoryTrackNames.includes(trackName)));
@@ -50,8 +59,25 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
 
     /** Turns off pose and trajectory overlays (e.g. when entering annotate mode). */
     const hideAnalysisOverlays = useCallback(() => {
+        if (analysisOverlaySnapshotRef.current === null) {
+            analysisOverlaySnapshotRef.current = {
+                showPose: showPoseRef.current,
+                showTrajectory: showTrajectoryRef.current,
+            };
+        }
         setShowPose(false);
         setShowTrajectory(false);
+    }, []);
+
+    /** Restores pose/trajectory visibility saved when annotate mode last started. */
+    const restoreAnalysisOverlays = useCallback(() => {
+        const snapshot = analysisOverlaySnapshotRef.current;
+        if (!snapshot) {
+            return;
+        }
+        setShowPose(snapshot.showPose);
+        setShowTrajectory(snapshot.showTrajectory);
+        analysisOverlaySnapshotRef.current = null;
     }, []);
 
     return {
@@ -68,5 +94,6 @@ export function useOverlaySettings({ availableTrajectoryTrackNames }: UseOverlay
         toggleTrajectory,
         togglePose,
         hideAnalysisOverlays,
+        restoreAnalysisOverlays,
     };
 }
