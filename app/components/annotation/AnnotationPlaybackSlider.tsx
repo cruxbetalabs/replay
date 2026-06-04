@@ -14,6 +14,7 @@ interface AnnotationPlaybackSliderProps {
     rangeStart?: number;
     rangeEnd?: number;
     onSeek: (time: number) => void;
+    onSeekCommit?: () => void;
     onRangeChange?: (startTime: number, endTime: number) => void;
     onRangeHandleDrag?: (isDragging: boolean) => void;
 }
@@ -37,6 +38,7 @@ export function AnnotationPlaybackSlider({
     rangeStart = 0,
     rangeEnd = 0,
     onSeek,
+    onSeekCommit,
     onRangeChange,
     onRangeHandleDrag,
 }: AnnotationPlaybackSliderProps) {
@@ -91,6 +93,7 @@ export function AnnotationPlaybackSlider({
 
         const handlePointerUp = () => {
             onRangeHandleDrag?.(false);
+            onSeekCommit?.();
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
@@ -116,6 +119,7 @@ export function AnnotationPlaybackSlider({
                         value={currentTime}
                         aria-label="Annotation frame position"
                         onChange={(event) => onSeek(parseFloat(event.target.value))}
+                        onPointerUp={() => onSeekCommit?.()}
                         className={playbackSliderClassName}
                     />
                 </div>

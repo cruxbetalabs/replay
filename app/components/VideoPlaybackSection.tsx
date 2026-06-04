@@ -17,6 +17,7 @@ interface VideoPlaybackSectionProps {
     selectedKeyMomentId: string | null;
     selectedPosition: KeyMomentPosition | null;
     onSeek: (time: number) => void;
+    onSeekCommit?: () => void;
     onActivateSlider: (videoIndex: VideoIndex) => void;
     onSelectKeyMoment: (keyMomentId: string) => void;
     onDeselectKeyMoment: () => void;
@@ -37,6 +38,7 @@ export function VideoPlaybackSection({
     selectedKeyMomentId,
     selectedPosition,
     onSeek,
+    onSeekCommit,
     onActivateSlider,
     onSelectKeyMoment,
     onDeselectKeyMoment,
@@ -101,6 +103,7 @@ export function VideoPlaybackSection({
                         aria-label={`${label} playback position`}
                         onFocus={handlePlaybackSliderActivate}
                         onPointerDown={handlePlaybackSliderActivate}
+                        onPointerUp={() => onSeekCommit?.()}
                         onChange={(event) => onSeek(parseFloat(event.target.value))}
                         className={playbackSliderClassName}
                     />

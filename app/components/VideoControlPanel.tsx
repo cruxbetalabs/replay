@@ -21,6 +21,8 @@ interface VideoControlPanelProps {
     selectedKeyMomentId: string | null;
     onSeek1: (time: number) => void;
     onSeek2: (time: number) => void;
+    onSeekCommit1?: () => void;
+    onSeekCommit2?: () => void;
     onPlaybackSliderActivate: (videoIndex: 0 | 1) => void;
     onCreateKeyMomentFromVideo1: () => void;
     onCreateKeyMomentFromVideo2: () => void;
@@ -47,6 +49,8 @@ export function VideoControlPanel({
     selectedKeyMomentId,
     onSeek1,
     onSeek2,
+    onSeekCommit1,
+    onSeekCommit2,
     onPlaybackSliderActivate,
     onCreateKeyMomentFromVideo1,
     onCreateKeyMomentFromVideo2,
@@ -80,6 +84,7 @@ export function VideoControlPanel({
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition1}
                         onSeek={onSeek1}
+                        onSeekCommit={onSeekCommit1}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
                         onDeselectKeyMoment={onDeselectKeyMoment}
@@ -97,6 +102,7 @@ export function VideoControlPanel({
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition1}
                         onSeek={onSeek1}
+                        onSeekCommit={onSeekCommit1}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
                         onDeselectKeyMoment={onDeselectKeyMoment}
@@ -123,6 +129,7 @@ export function VideoControlPanel({
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition2}
                         onSeek={onSeek2}
+                        onSeekCommit={onSeekCommit2}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
                         onDeselectKeyMoment={onDeselectKeyMoment}
@@ -140,6 +147,7 @@ export function VideoControlPanel({
                         selectedKeyMomentId={selectedKeyMomentId}
                         selectedPosition={selectedPosition2}
                         onSeek={onSeek2}
+                        onSeekCommit={onSeekCommit2}
                         onActivateSlider={onPlaybackSliderActivate}
                         onSelectKeyMoment={onSelectKeyMoment}
                         onDeselectKeyMoment={onDeselectKeyMoment}

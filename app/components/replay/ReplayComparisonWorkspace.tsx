@@ -148,7 +148,7 @@ export function ReplayComparisonWorkspace({
     const seekAmount1 = fps1 ? 1 / fps1 : 1 / 30;
     const seekAmount2 = fps2 ? 1 / fps2 : 1 / 30;
 
-    const { currentTime1, currentTime2, duration1, duration2, seekTo1, seekTo2 } = useVideoControl({
+    const { currentTime1, currentTime2, duration1, duration2, seekTo1, seekTo2, commitSeekTo1, commitSeekTo2 } = useVideoControl({
         videoRefs,
         videoUrls,
         direction,
@@ -241,6 +241,7 @@ export function ReplayComparisonWorkspace({
             fps: overlayMetadataByIndex[0]?.sourceVideo.fps ?? fps1,
             seekAmount: seekAmount1,
             onSeek: seekTo1,
+            onSeekCommit: commitSeekTo1,
             shapeTimings: shapeTimingsByIndex[0],
             onShapeTimingsChange: (shapeTimings) => setShapeTimings(0, shapeTimings),
         },
@@ -252,6 +253,7 @@ export function ReplayComparisonWorkspace({
             fps: overlayMetadataByIndex[1]?.sourceVideo.fps ?? fps2,
             seekAmount: seekAmount2,
             onSeek: seekTo2,
+            onSeekCommit: commitSeekTo2,
             shapeTimings: shapeTimingsByIndex[1],
             onShapeTimingsChange: (shapeTimings) => setShapeTimings(1, shapeTimings),
         },
@@ -269,6 +271,8 @@ export function ReplayComparisonWorkspace({
         seekAmount2,
         seekTo1,
         seekTo2,
+        commitSeekTo1,
+        commitSeekTo2,
         setShapeTimings,
         shapeTimingsByIndex,
     ]);
@@ -440,6 +444,8 @@ export function ReplayComparisonWorkspace({
                 selectedKeyMomentId={selectedKeyMomentId}
                 onSeek1={seekTo1}
                 onSeek2={seekTo2}
+                onSeekCommit1={commitSeekTo1}
+                onSeekCommit2={commitSeekTo2}
                 onPlaybackSliderActivate={setActivePlaybackSliderIndex}
                 onCreateKeyMomentFromVideo1={() => createKeyMomentFromVideo(0)}
                 onCreateKeyMomentFromVideo2={() => createKeyMomentFromVideo(1)}

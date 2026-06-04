@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { shouldUseFastSeekForScrubbing } from '../lib/video-seek';
+import { snapTimeToFrame } from '../lib/video-annotations';
 
 interface UseVideoControlOptions {
     videoRefs: RefObject<HTMLVideoElement | null>[];
@@ -17,6 +19,8 @@ interface SeekChannelRefs {
     pendingTime: { current: number | null };
     seekRaf: { current: number };
     seekedHooked: { current: boolean };
+    lastRequestedTime: { current: number };
+    lastAppliedTime: { current: number | null };
 }
 
 function clampSeekTime(video: HTMLVideoElement, time: number): number {
@@ -27,7 +31,6 @@ function clampSeekTime(video: HTMLVideoElement, time: number): number {
     return Math.max(0, Math.min(time, duration));
 }
 
-/** Prefer fastSeek during coalesced scrubbing when the browser supports it. */
 function performVideoSeek(video: HTMLVideoElement, time: number, preferFastSeek: boolean): void {
     const clamped = clampSeekTime(video, time);
     if (preferFastSeek && typeof (video as FastSeekableVideo).fastSeek === 'function') {
@@ -41,66 +44,128 @@ function performVideoSeek(video: HTMLVideoElement, time: number, preferFastSeek:
     video.currentTime = clamped;
 }
 
-/**
- * Applies the latest pending seek. If the decoder is still busy, waits for `seeked`
- * before applying again so the queue does not grow without bound.
- */
-function flushVideoSeek(
+function resolveSeekTarget(
+    video: HTMLVideoElement,
+    time: number,
+    fps: number | null,
+    useFastSeek: boolean,
+): number {
+    return useFastSeek ? clampSeekTime(video, time) : snapTimeToFrame(time, fps);
+}
+
+function scheduleSeekFollowUp(
     getVideo: () => HTMLVideoElement | null,
     refs: SeekChannelRefs,
+    fps: number | null,
+    useFastSeek: boolean,
+    flush: () => void,
 ): void {
+    if (refs.pendingTime.current !== null && !refs.seekRaf.current) {
+        refs.seekRaf.current = requestAnimationFrame(() => {
+            refs.seekRaf.current = 0;
+            flush();
+        });
+    }
+
+    // Safari: when the decoder finishes a precise seek, immediately apply any
+    // newer scrub target instead of waiting for the next animation frame.
+    if (useFastSeek || refs.pendingTime.current === null || refs.seekedHooked.current) {
+        return;
+    }
+
+    const video = getVideo();
+    if (!video) {
+        return;
+    }
+
+    refs.seekedHooked.current = true;
+    const onSeeked = () => {
+        refs.seekedHooked.current = false;
+        if (refs.pendingTime.current !== null) {
+            flush();
+        }
+    };
+
+    if (video.seeking) {
+        video.addEventListener('seeked', onSeeked, { once: true });
+        return;
+    }
+
+    refs.seekedHooked.current = false;
+    queueMicrotask(onSeeked);
+}
+
+/**
+ * Coalesced scrub seek — one target per animation frame at most.
+ * Never blocks on seeked (Safari included); issues new currentTime even while
+ * a prior seek is still decoding so scrubbing keeps up with the slider.
+ */
+function flushCoalescedSeek(
+    getVideo: () => HTMLVideoElement | null,
+    refs: SeekChannelRefs,
+    fps: number | null,
+): void {
+    const useFastSeek = shouldUseFastSeekForScrubbing();
     const video = getVideo();
     if (!video || refs.pendingTime.current === null) {
         return;
     }
 
-    if (video.seeking) {
-        if (!refs.seekedHooked.current) {
-            refs.seekedHooked.current = true;
-            const onSeeked = () => {
-                refs.seekedHooked.current = false;
-                flushVideoSeek(getVideo, refs);
-            };
-            video.addEventListener('seeked', onSeeked, { once: true });
-        }
-        return;
-    }
-
-    const target = refs.pendingTime.current;
+    const target = resolveSeekTarget(video, refs.pendingTime.current, fps, useFastSeek);
     refs.pendingTime.current = null;
-    performVideoSeek(video, target, true);
 
-    const videoAfter = getVideo();
-    if (!videoAfter || refs.pendingTime.current === null) {
-        return;
-    }
-
-    if (videoAfter.seeking) {
-        if (!refs.seekedHooked.current) {
-            refs.seekedHooked.current = true;
-            videoAfter.addEventListener('seeked', () => {
-                refs.seekedHooked.current = false;
-                flushVideoSeek(getVideo, refs);
-            }, { once: true });
+    if (!useFastSeek && refs.lastAppliedTime.current !== null) {
+        const frameStep = fps && fps > 0 ? 1 / fps : 1 / 30;
+        if (Math.abs(target - refs.lastAppliedTime.current) < frameStep * 0.25) {
+            scheduleSeekFollowUp(getVideo, refs, fps, useFastSeek, () => {
+                flushCoalescedSeek(getVideo, refs, fps);
+            });
+            return;
         }
-        return;
     }
 
-    flushVideoSeek(getVideo, refs);
+    refs.lastAppliedTime.current = target;
+    performVideoSeek(video, target, useFastSeek);
+
+    scheduleSeekFollowUp(getVideo, refs, fps, useFastSeek, () => {
+        flushCoalescedSeek(getVideo, refs, fps);
+    });
 }
 
 function scheduleVideoSeek(
     getVideo: () => HTMLVideoElement | null,
     refs: SeekChannelRefs,
     newTime: number,
+    fps: number | null,
 ): void {
+    refs.lastRequestedTime.current = newTime;
     refs.pendingTime.current = newTime;
     if (!refs.seekRaf.current) {
         refs.seekRaf.current = requestAnimationFrame(() => {
             refs.seekRaf.current = 0;
-            flushVideoSeek(getVideo, refs);
+            flushCoalescedSeek(getVideo, refs, fps);
         });
     }
+}
+
+function commitVideoSeek(
+    getVideo: () => HTMLVideoElement | null,
+    refs: SeekChannelRefs,
+    fps: number | null,
+): void {
+    cancelAnimationFrame(refs.seekRaf.current);
+    refs.seekRaf.current = 0;
+    refs.pendingTime.current = null;
+    refs.seekedHooked.current = false;
+
+    const video = getVideo();
+    if (!video) {
+        return;
+    }
+
+    const target = snapTimeToFrame(refs.lastRequestedTime.current, fps);
+    refs.lastAppliedTime.current = target;
+    performVideoSeek(video, target, false);
 }
 
 export function useVideoControl({
@@ -119,11 +184,15 @@ export function useVideoControl({
         pendingTime: useRef<number | null>(null),
         seekRaf: useRef(0),
         seekedHooked: useRef(false),
+        lastRequestedTime: useRef(0),
+        lastAppliedTime: useRef<number | null>(null),
     };
     const channel2: SeekChannelRefs = {
         pendingTime: useRef<number | null>(null),
         seekRaf: useRef(0),
         seekedHooked: useRef(false),
+        lastRequestedTime: useRef(0),
+        lastAppliedTime: useRef<number | null>(null),
     };
 
     const getVideo1 = useCallback(() => videoRefs[0]?.current ?? null, [videoRefs]);
@@ -137,21 +206,31 @@ export function useVideoControl({
     useEffect(() => {
         channel1.pendingTime.current = null;
         channel1.seekedHooked.current = false;
+        channel1.lastAppliedTime.current = null;
         channel2.pendingTime.current = null;
         channel2.seekedHooked.current = false;
+        channel2.lastAppliedTime.current = null;
     }, [videoUrls]);
 
     const seekTo1 = useCallback((newTime: number) => {
         if (!getVideo1()) return;
         setCurrentTime1(newTime);
-        scheduleVideoSeek(getVideo1, channel1, newTime);
-    }, [getVideo1]);
+        scheduleVideoSeek(getVideo1, channel1, newTime, fps);
+    }, [fps, getVideo1]);
 
     const seekTo2 = useCallback((newTime: number) => {
         if (!getVideo2()) return;
         setCurrentTime2(newTime);
-        scheduleVideoSeek(getVideo2, channel2, newTime);
-    }, [getVideo2]);
+        scheduleVideoSeek(getVideo2, channel2, newTime, fps);
+    }, [fps, getVideo2]);
+
+    const commitSeekTo1 = useCallback(() => {
+        commitVideoSeek(getVideo1, channel1, fps);
+    }, [fps, getVideo1]);
+
+    const commitSeekTo2 = useCallback(() => {
+        commitVideoSeek(getVideo2, channel2, fps);
+    }, [fps, getVideo2]);
 
     useEffect(() => {
         if (direction === 'none') return;
@@ -163,12 +242,14 @@ export function useVideoControl({
         const seekAmount = fps ? 1 / fps : 1 / 30;
         const delta = direction === 'right' ? seekAmount : -seekAmount;
 
-        // Frame-step uses a precise seek (not fastSeek) and bypasses the scrub queue.
         if (video && video.duration) {
             let newTime = video.currentTime + delta;
             newTime = Math.max(0, Math.min(newTime, video.duration));
             channel1.pendingTime.current = null;
-            performVideoSeek(video, newTime, false);
+            const snapped = snapTimeToFrame(newTime, fps);
+            performVideoSeek(video, snapped, false);
+            channel1.lastRequestedTime.current = newTime;
+            channel1.lastAppliedTime.current = snapped;
             setCurrentTime1(newTime);
         }
 
@@ -176,7 +257,10 @@ export function useVideoControl({
             let newTime = video2.currentTime + delta;
             newTime = Math.max(0, Math.min(newTime, video2.duration));
             channel2.pendingTime.current = null;
-            performVideoSeek(video2, newTime, false);
+            const snapped = snapTimeToFrame(newTime, fps);
+            performVideoSeek(video2, snapped, false);
+            channel2.lastRequestedTime.current = newTime;
+            channel2.lastAppliedTime.current = snapped;
             setCurrentTime2(newTime);
         }
     }, [direction, movement, fps, videoRefs]);
@@ -236,5 +320,7 @@ export function useVideoControl({
         fps,
         seekTo1,
         seekTo2,
+        commitSeekTo1,
+        commitSeekTo2,
     };
 }

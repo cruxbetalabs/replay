@@ -12,6 +12,7 @@ import { useCloudJobDragOptional } from './replay/CloudJobDragContext';
 import { EMPTY_STRING_ARRAY } from '../lib/empty-arrays';
 import { VideoAnnotationLayer } from './annotation/VideoAnnotationLayerClient';
 import type { VideoAnnotationBundle } from '../lib/video-annotations';
+import { preferredVideoPreload } from '../lib/video-seek';
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
@@ -583,7 +584,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                             controls={false}
                             autoPlay={false}
                             playsInline
-                            preload="metadata"
+                            preload={preferredVideoPreload()}
                             aria-label={`${label} comparison video`}
                             aria-busy={isCalculating}
                             onLoadedData={() => {
@@ -679,6 +680,7 @@ export const VideoDropzone = React.forwardRef<HTMLVideoElement, VideoDropzonePro
                                 fps={annotation.fps}
                                 seekAmount={annotation.seekAmount}
                                 onSeek={annotation.onSeek}
+                                onSeekCommit={annotation.onSeekCommit}
                                 shapeTimings={annotation.shapeTimings}
                                 onShapeTimingsChange={annotation.onShapeTimingsChange}
                                 persistenceKey={annotationPersistenceKey}

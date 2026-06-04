@@ -64,6 +64,7 @@ export interface VideoAnnotationBundle {
     fps: number | null;
     seekAmount: number;
     onSeek: (time: number) => void;
+    onSeekCommit?: () => void;
     shapeTimings: Record<string, AnnotationTiming>;
     onShapeTimingsChange: (shapeTimings: Record<string, AnnotationTiming>) => void;
 }

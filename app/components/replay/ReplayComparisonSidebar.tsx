@@ -26,6 +26,8 @@ interface ReplayComparisonSidebarProps {
     selectedKeyMomentId: string | null;
     onSeek1: (time: number) => void;
     onSeek2: (time: number) => void;
+    onSeekCommit1?: () => void;
+    onSeekCommit2?: () => void;
     onPlaybackSliderActivate: (videoIndex: 0 | 1) => void;
     onCreateKeyMomentFromVideo1: () => void;
     onCreateKeyMomentFromVideo2: () => void;
@@ -87,6 +89,8 @@ export function ReplayComparisonSidebar({
     selectedKeyMomentId,
     onSeek1,
     onSeek2,
+    onSeekCommit1,
+    onSeekCommit2,
     onPlaybackSliderActivate,
     onCreateKeyMomentFromVideo1,
     onCreateKeyMomentFromVideo2,
@@ -164,6 +168,8 @@ export function ReplayComparisonSidebar({
                     selectedKeyMomentId={selectedKeyMomentId}
                     onSeek1={onSeek1}
                     onSeek2={onSeek2}
+                    onSeekCommit1={onSeekCommit1}
+                    onSeekCommit2={onSeekCommit2}
                     onPlaybackSliderActivate={onPlaybackSliderActivate}
                     onCreateKeyMomentFromVideo1={onCreateKeyMomentFromVideo1}
                     onCreateKeyMomentFromVideo2={onCreateKeyMomentFromVideo2}

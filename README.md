@@ -46,7 +46,7 @@ The `<video>` element is the single source of truth for current playback positio
 
 ### How it works
 
-**React state (`currentTime1 / currentTime2` in `useVideoControl`)** is UI-only. It is updated immediately on slider drag so the scrubber stays responsive, but the overlay never reads these values. Actual seeks are rAF-coalesced, chained on `seeked` when the decoder is busy, and use `fastSeek()` when the browser supports it so the decoder queue does not grow during fast scrubbing.
+**React state (`currentTime1 / currentTime2` in `useVideoControl`)** is UI-only. It is updated immediately on slider drag so the scrubber stays responsive, but the overlay never reads these values. Actual seeks are rAF-coalesced. **Chromium** uses `fastSeek()` during drag (one seek per frame, no blocking on `seeked`) and a precise `currentTime` commit when the slider is released. **Safari** uses coalesced precise `currentTime` seeks (never `fastSeek`, which snaps to keyframes) with `seeked` catch-up so the decoder applies the latest scrub target as soon as each frame finishes decoding; videos use `preload="auto"` on Safari to buffer adjacent frames.
 
 **`TrajectoryOverlay` is event-driven, not prop-driven.** It attaches listeners directly to the `<video>` DOM element and draws into a `<canvas>` positioned on top of the video:
 

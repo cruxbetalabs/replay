@@ -49,6 +49,7 @@ interface VideoAnnotationLayerProps {
     fps: number | null;
     seekAmount: number;
     onSeek: (time: number) => void;
+    onSeekCommit?: () => void;
     shapeTimings: Record<string, AnnotationTiming>;
     onShapeTimingsChange: (shapeTimings: Record<string, AnnotationTiming>) => void;
     persistenceKey: string | null;
@@ -187,6 +188,7 @@ export function VideoAnnotationLayer({
     fps,
     seekAmount,
     onSeek,
+    onSeekCommit,
     shapeTimings,
     onShapeTimingsChange,
     persistenceKey,
@@ -725,6 +727,7 @@ export function VideoAnnotationLayer({
                         rangeStart={selectedTiming?.startTime ?? currentTime}
                         rangeEnd={selectedTiming?.endTime ?? Math.min(currentTime + 1, duration)}
                         onSeek={onSeek}
+                        onSeekCommit={onSeekCommit}
                         onRangeChange={selectedTiming ? handleRangeChange : undefined}
                         onRangeHandleDrag={selectedTiming ? handleRangeHandleDrag : undefined}
                     />
