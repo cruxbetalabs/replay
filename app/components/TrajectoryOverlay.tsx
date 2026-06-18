@@ -46,7 +46,7 @@ const TRAJECTORY_ARROW_ORIGIN_RADIUS_PX = 4;
 const POSE_VISIBILITY_THRESHOLD = 0.5;
 const POSE_PRESENCE_THRESHOLD = 0.5;
 const POSE_SKELETON_STROKE_WIDTH_PX = 2;
-const POSE_LANDMARK_RADIUS_PX = 3;
+const POSE_JOINT_RADIUS_PX = POSE_SKELETON_STROKE_WIDTH_PX / 2;
 const DEFAULT_POSE_COLOR: RgbColor = { r: 255, g: 255, b: 255 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -461,28 +461,31 @@ export function TrajectoryOverlay({
                 context.stroke();
             });
 
-            context.fillStyle = `rgba(${poseColor.r}, ${poseColor.g}, ${poseColor.b}, 0.95)`;
             poseFrame.landmarks.forEach((landmark, landmarkIndex) => {
                 if (!shouldDrawPoseLandmark(landmark)) {
                     return;
                 }
 
-                const pos = getPos(landmark, landmarkIndex);
                 const isOverridden = landmarkOverridesRef.current?.has(landmarkIndex) ?? false;
                 const isPinned = pinnedJointsRef.current?.has(landmarkIndex) ?? false;
+                if (!isOverridden && !isPinned) {
+                    return;
+                }
 
+                const pos = getPos(landmark, landmarkIndex);
                 const cx = videoRect.x + (pos.x * poseScaleX);
                 const cy = videoRect.y + (pos.y * poseScaleY);
-                const radius = isOverridden ? POSE_LANDMARK_RADIUS_PX + 2 : POSE_LANDMARK_RADIUS_PX;
 
-                context.beginPath();
-                context.arc(cx, cy, radius, 0, Math.PI * 2);
-                context.fill();
+                if (isOverridden) {
+                    context.beginPath();
+                    context.arc(cx, cy, POSE_JOINT_RADIUS_PX, 0, Math.PI * 2);
+                    context.fillStyle = `rgba(${poseColor.r}, ${poseColor.g}, ${poseColor.b}, 0.95)`;
+                    context.fill();
+                }
 
-                // Draw a concentric ring around pinned joints.
                 if (isPinned) {
                     context.beginPath();
-                    context.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+                    context.arc(cx, cy, POSE_JOINT_RADIUS_PX + 4, 0, Math.PI * 2);
                     context.strokeStyle = `rgba(${poseColor.r}, ${poseColor.g}, ${poseColor.b}, 0.7)`;
                     context.lineWidth = 1.5;
                     context.stroke();
